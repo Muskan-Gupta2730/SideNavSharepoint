@@ -1,0 +1,18 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
+  "version": "2.0",
+  "bundles": {
+    "side-nav-sharepoint-application-customizer": {
+      "components": [
+        {
+          "entrypoint": "./lib/extensions/sideNavSharepoint/SideNavSharepointApplicationCustomizer.js",
+          "manifest": "./src/extensions/sideNavSharepoint/SideNavSharepointApplicationCustomizer.manifest.json"
+        }
+      ]
+    }
+  },
+  "externals": {},
+  "localizedResources": {
+    "SideNavSharepointApplicationCustomizerStrings": "lib/extensions/sideNavSharepoint/loc/{locale}.js"
+  }
+}

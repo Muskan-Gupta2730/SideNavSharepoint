@@ -1,0 +1,20 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "useGulp": false,
+    "plusBeta": false,
+    "isCreatingSolution": true,
+    "nodeVersion": "24.19.0",
+    "sdksVersions": {},
+    "version": "1.23.2",
+    "libraryName": "side-nav",
+    "libraryId": "11fc76f8-ec72-41e5-ae17-560f0f15c7f0",
+    "environment": "spo",
+    "packageManager": "npm",
+    "solutionName": "SideNav",
+    "solutionShortDescription": "SideNav description",
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "componentType": "extension",
+    "extensionType": "ApplicationCustomizer"
+  }
+}

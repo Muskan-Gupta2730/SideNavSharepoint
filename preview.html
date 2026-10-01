@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sirva Life - SharePoint Vertical Mega Menu Navbar Preview</title>
+  <style>
+    :root {
+      --sirva-bg-dark: #15083f;
+      --sirva-bg-dark-hover: #29155f;
+      --sirva-bg-dark-active: #2b1461;
+      --sirva-rail-width: 220px;
+      --sirva-top-height: 58px;
+      --sirva-cyan: #22d3ee;
+      --sirva-purple-text: #a855f7;
+      --sirva-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--sirva-font);
+      background-color: #f3f4f6;
+      color: #1e293b;
+      overflow-x: hidden;
+    }
+
+    /* Concept note indicator at top like the mockup */
+    .concept-indicator-bar {
+      background: #e2e8f0;
+      border-bottom: 1px solid #cbd5e1;
+      padding: 6px 16px;
+      font-size: 13px;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 10002;
+      position: relative;
+    }
+    .concept-tag {
+      background: #1e1b4b;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+
+    /* Top Bar */
+    .sirva-top-header {
+      position: fixed;
+      top: 31px; /* below concept bar in preview */
+      left: 0;
+      right: 0;
+      height: var(--sirva-top-height);
+      background: var(--sirva-bg-dark);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      z-index: 10001;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px 0 20px;
+    }
+
+    /* Brand Logo */
+    .sirva-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: #ffffff;
+      user-select: none;
+    }
+    .sirva-brand-icon {
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sirva-brand-text {
+      font-size: 21px;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      display: flex;
+      align-items: baseline;
+    }
+    .sirva-brand-sirva {
+      font-weight: 300;
+      color: #ffffff;
+    }
+    .sirva-brand-life {
+      font-weight: 700;
+      color: #ffffff;
+      margin-left: 2px;
+    }
+
+    .sirva-top-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+    .sirva-btn-sppkg {
+      background: #8b5cf6;
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Left Vertical Rail */
+    .sirva-left-rail {
+      position: fixed;
+      top: calc(var(--sirva-top-height) + 31px);
+      left: 0;
+      bottom: 0;
+      width: var(--sirva-rail-width);
+      background: var(--sirva-bg-dark);
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding-top: 18px;
+      padding-bottom: 20px;
+      box-shadow: 2px 0 12px rgba(0, 0, 0, 0.18);
+    }
+
+    /* Navigation List */
+    .sirva-nav-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .sirva-nav-item {
+      position: relative;
+    }
+
+    .sirva-nav-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 22px;
+      color: #cbd5e1;
+      text-decoration: none;
+      font-size: 14.5px;
+      font-weight: 400;
+      border-left: 3.5px solid transparent;
+      transition: all 0.15s ease;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .sirva-nav-link:hover,
+    .sirva-nav-item.is-hovered .sirva-nav-link {
+      background: var(--sirva-bg-dark-hover);
+      color: #ffffff;
+    }
+
+    /* Active State (Home) */
+    .sirva-nav-item.is-active .sirva-nav-link {
+      color: var(--sirva-cyan);
+      border-left-color: var(--sirva-cyan);
+      font-weight: 500;
+    }
+
+    /* Flyout open state (Pay & benefits in mockup) */
+    .sirva-nav-item.is-flyout-open .sirva-nav-link {
+      background: var(--sirva-bg-dark-active);
+      color: #ffffff;
+    }
+
+    .sirva-chevron {
+      font-size: 15px;
+      line-height: 1;
+      opacity: 0.75;
+      margin-left: 6px;
+      transition: transform 0.18s ease;
+    }
+    .sirva-nav-link:hover .sirva-chevron,
+    .sirva-nav-item.is-flyout-open .sirva-chevron {
+      opacity: 1;
+      transform: translateX(2px);
+    }
+
+    /* Mega Menu Flyout Panel */
+    .sirva-megamenu-panel {
+      position: fixed;
+      left: calc(var(--sirva-rail-width) + 2px);
+      top: calc(var(--sirva-top-height) + 31px + 12px);
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 20px 48px -4px rgba(18, 9, 60, 0.22), 0 8px 20px -2px rgba(18, 9, 60, 0.1);
+      padding: 30px 40px 34px 40px;
+      z-index: 10005;
+      min-width: 660px;
+      max-width: 820px;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(4px);
+      transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .sirva-megamenu-panel::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: -14px;
+      width: 16px;
+    }
+
+    .sirva-megamenu-panel.is-visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .sirva-megamenu-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(180px, 1fr));
+      gap: 36px;
+    }
+
+    .sirva-megamenu-col {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sirva-megamenu-heading {
+      font-size: 12.5px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--sirva-purple-text);
+      margin: 0 0 18px 0;
+      user-select: none;
+    }
+
+    .sirva-megamenu-links {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+    }
+
+    .sirva-megamenu-link {
+      color: #334155;
+      text-decoration: none;
+      font-size: 14.5px;
+      line-height: 1.4;
+      transition: color 0.15s ease, transform 0.15s ease;
+      display: inline-block;
+    }
+
+    .sirva-megamenu-link:hover {
+      color: #7c3aed;
+      transform: translateX(4px);
+    }
+
+    .sirva-rail-footer {
+      padding: 14px 22px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    /* Page Content Simulation */
+    .page-content-wrapper {
+      margin-left: var(--sirva-rail-width);
+      padding-top: calc(var(--sirva-top-height) + 31px);
+      min-height: 100vh;
+      background: #f8fafc;
+    }
+
+    .content-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 40px;
+    }
+
+    .section-label {
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f172a;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .section-label span {
+      font-size: 13.5px;
+      color: #64748b;
+      font-weight: 400;
+    }
+
+    .banner-badge-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: #475569;
+      margin-bottom: 16px;
+    }
+    .badge-2a {
+      background: #1e1b4b;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+
+    /* Full bleed banner mockup */
+    .hero-banner-mock {
+      width: 100%;
+      height: 380px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #1e0b57 0%, #3b0764 40%, #701a75 75%, #be185d 100%);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: flex-end;
+      padding: 48px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .hero-banner-mock::before {
+      content: "";
+      position: absolute;
+      top: -50%;
+      right: -10%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, rgba(139, 92, 246, 0.1) 60%, transparent 80%);
+      border-radius: 50%;
+    }
+
+    .hero-banner-content {
+      position: relative;
+      z-index: 2;
+    }
+    .hero-category {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: #38bdf8;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .hero-title {
+      font-size: 38px;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.15;
+      margin-bottom: 12px;
+    }
+    .hero-desc {
+      font-size: 16px;
+      color: #e2e8f0;
+      max-width: 580px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Mockup Concept Bar -->
+  <div class="concept-indicator-bar">
+    <span class="concept-tag">1c</span>
+    <strong>Vertical - Mega menu</strong> Left rail, panel flies out over content — costs 220px of page width
+  </div>
+
+  <!-- Top Bar -->
+  <header class="sirva-top-header">
+    <a href="#" class="sirva-brand" title="Sirva Life">
+      <span class="sirva-brand-icon">
+        <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="18" stroke="url(#swirlGradient1)" stroke-width="3.5" stroke-dasharray="75 35" stroke-linecap="round"/>
+          <circle cx="20" cy="20" r="12" stroke="url(#swirlGradient2)" stroke-width="3.5" stroke-dasharray="45 25" stroke-linecap="round"/>
+          <circle cx="20" cy="20" r="5.5" fill="#22d3ee"/>
+          <defs>
+            <linearGradient id="swirlGradient1" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#22d3ee"/>
+              <stop offset="50%" stop-color="#a855f7"/>
+              <stop offset="100%" stop-color="#ec4899"/>
+            </linearGradient>
+            <linearGradient id="swirlGradient2" x1="40" y1="40" x2="0" y2="0" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#06b6d4"/>
+              <stop offset="100%" stop-color="#d946ef"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </span>
+      <span class="sirva-brand-text">
+        <span class="sirva-brand-sirva">sirva</span><span class="sirva-brand-life">life</span>
+      </span>
+    </a>
+    <div class="sirva-top-right">
+      <span>SharePoint Application Customizer (SPFx 1.23.2)</span>
+      <span class="sirva-btn-sppkg">Package Ready: side-nav.sppkg</span>
+    </div>
+  </header>
+
+  <!-- Left Vertical Rail -->
+  <aside class="sirva-left-rail" id="sirvaLeftRail" role="navigation" aria-label="Primary Navigation">
+    <ul class="sirva-nav-list" id="sirvaNavList">
+      <li class="sirva-nav-item is-active" data-item-id="home">
+        <a class="sirva-nav-link" href="#">
+          <span>Home</span>
+        </a>
+      </li>
+      <li class="sirva-nav-item" data-item-id="working-here">
+        <a class="sirva-nav-link" href="#">
+          <span>Working here</span>
+          <span class="sirva-chevron">&#x203A;</span>
+        </a>
+      </li>
+      <li class="sirva-nav-item is-flyout-open" data-item-id="pay-benefits">
+        <a class="sirva-nav-link" href="#">
+          <span>Pay & benefits</span>
+          <span class="sirva-chevron">&#x203A;</span>
+        </a>
+      </li>
+      <li class="sirva-nav-item" data-item-id="learning">
+        <a class="sirva-nav-link" href="#">
+          <span>Learning</span>
+          <span class="sirva-chevron">&#x203A;</span>
+        </a>
+      </li>
+      <li class="sirva-nav-item" data-item-id="countries">
+        <a class="sirva-nav-link" href="#">
+          <span>Countries</span>
+        </a>
+      </li>
+      <li class="sirva-nav-item" data-item-id="news">
+        <a class="sirva-nav-link" href="#">
+          <span>News</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="sirva-rail-footer">
+      <span>Global People Hub</span>
+    </div>
+  </aside>
+
+  <!-- Mega Menu Flyout Panel (initially showing Pay & benefits like screenshot) -->
+  <div class="sirva-megamenu-panel is-visible" id="sirvaMegaMenuPanel">
+    <div class="sirva-megamenu-grid" id="sirvaMegaMenuGrid">
+      <div class="sirva-megamenu-col">
+        <h4 class="sirva-megamenu-heading">YOUR PAY</h4>
+        <ul class="sirva-megamenu-links">
+          <li><a href="#" class="sirva-megamenu-link">Payslips and tax documents</a></li>
+          <li><a href="#" class="sirva-megamenu-link">Pay calendar 2026</a></li>
+          <li><a href="#" class="sirva-megamenu-link">Bonus and commission</a></li>
+          <li><a href="#" class="sirva-megamenu-link">Change your bank details</a></li>
+        </ul>
+      </div>
+
+      <div class="sirva-megamenu-col">
+        <h4 class="sirva-megamenu-heading">BENEFITS</h4>
+        <ul class="sirva-megamenu-links">
+          <li><a href="#" class="sirva-megamenu-link">Enrolment 2027</a></li>
+          <li><a href="#" class="sirva-megamenu-link">Health and insurance</a></li>
+          <li><a href="#" class="sirva-megamenu-link">Pension and savings</a></li>
+          <li><a href="#" class="sirva-megamenu-link">Family and parental leave</a></li>
+        </ul>
+      </div>
+
+      <div class="sirva-megamenu-col">
+        <h4 class="sirva-megamenu-heading">WHO CAN HELP</h4>
+        <ul class="sirva-megamenu-links">
+          <li><a href="#" class="sirva-megamenu-link">Your local HR team</a></li>
+          <li><a href="#" class="sirva-megamenu-link">Payroll service desk</a></li>
+          <li><a href="#" class="sirva-megamenu-link">Ask a question</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page Content Simulation -->
+  <div class="page-content-wrapper">
+    <div class="content-container">
+      <div class="section-label">
+        Banner <span>Three ways to open a page</span>
+      </div>
+      <div class="banner-badge-row">
+        <span class="badge-2a">2a</span>
+        <strong>Full-bleed photo banner</strong> OOTB · Hero web part, one tile
+      </div>
+
+      <div class="hero-banner-mock">
+        <div class="hero-banner-content">
+          <div class="hero-category">GLOBAL PEOPLE HUB</div>
+          <h1 class="hero-title">Welcome to Sirva Life</h1>
+          <p class="hero-desc">Your central hub for global benefits, career growth, community programs, and payroll resources.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Navigation Data
+    const NAV_DATA = {
+      'working-here': {
+        columns: [
+          {
+            header: 'OUR CULTURE',
+            items: ['Values & Mission', 'Diversity & Inclusion', 'Community Impact', 'Recognition & Awards']
+          },
+          {
+            header: 'WORKPLACE',
+            items: ['Offices & Locations', 'Flexible Working', 'Health & Wellbeing', 'Travel & Expenses']
+          },
+          {
+            header: 'TOOLS & TECH',
+            items: ['IT Service Desk', 'Software & Apps', 'Equipment Request', 'Security Guidelines']
+          }
+        ]
+      },
+      'pay-benefits': {
+        columns: [
+          {
+            header: 'YOUR PAY',
+            items: ['Payslips and tax documents', 'Pay calendar 2026', 'Bonus and commission', 'Change your bank details']
+          },
+          {
+            header: 'BENEFITS',
+            items: ['Enrolment 2027', 'Health and insurance', 'Pension and savings', 'Family and parental leave']
+          },
+          {
+            header: 'WHO CAN HELP',
+            items: ['Your local HR team', 'Payroll service desk', 'Ask a question']
+          }
+        ]
+      },
+      'learning': {
+        columns: [
+          {
+            header: 'DEVELOPMENT',
+            items: ['Career pathways', 'Leadership academy', 'Mentorship program', 'Skills assessment']
+          },
+          {
+            header: 'TRAINING',
+            items: ['Mandatory compliance', 'Technical certifications', 'Language courses', 'Global onboarding']
+          },
+          {
+            header: 'RESOURCES',
+            items: ['Digital library', 'Tuition assistance', 'External webinars', 'Learning FAQs']
+          }
+        ]
+      }
+    };
+
+    const panel = document.getElementById('sirvaMegaMenuPanel');
+    const grid = document.getElementById('sirvaMegaMenuGrid');
+    const items = document.querySelectorAll('.sirva-nav-item');
+    let closeTimer = null;
+
+    function renderPanel(data, itemEl) {
+      const rect = itemEl.getBoundingClientRect();
+      const topPos = Math.max(rect.top - 12, 100);
+      panel.style.top = topPos + 'px';
+
+      grid.innerHTML = data.columns.map(col => `
+        <div class="sirva-megamenu-col">
+          <h4 class="sirva-megamenu-heading">${col.header}</h4>
+          <ul class="sirva-megamenu-links">
+            ${col.items.map(it => `<li><a href="#" class="sirva-megamenu-link">${it}</a></li>`).join('')}
+          </ul>
+        </div>
+      `).join('');
+
+      items.forEach(it => it.classList.remove('is-flyout-open'));
+      itemEl.classList.add('is-flyout-open');
+      panel.classList.add('is-visible');
+    }
+
+    items.forEach(item => {
+      const id = item.getAttribute('data-item-id');
+      const data = NAV_DATA[id];
+
+      item.addEventListener('mouseenter', () => {
+        if (closeTimer) clearTimeout(closeTimer);
+        if (data) {
+          renderPanel(data, item);
+        } else {
+          panel.classList.remove('is-visible');
+          items.forEach(it => it.classList.remove('is-flyout-open'));
+        }
+      });
+
+      item.addEventListener('mouseleave', () => {
+        closeTimer = setTimeout(() => {
+          panel.classList.remove('is-visible');
+          items.forEach(it => it.classList.remove('is-flyout-open'));
+        }, 200);
+      });
+
+      item.addEventListener('click', (e) => {
+        items.forEach(it => it.classList.remove('is-active'));
+        item.classList.add('is-active');
+        if (data) {
+          e.preventDefault();
+          renderPanel(data, item);
+        }
+      });
+    });
+
+    panel.addEventListener('mouseenter', () => {
+      if (closeTimer) clearTimeout(closeTimer);
+    });
+
+    panel.addEventListener('mouseleave', () => {
+      closeTimer = setTimeout(() => {
+        panel.classList.remove('is-visible');
+        items.forEach(it => it.classList.remove('is-flyout-open'));
+      }, 200);
+    });
+  </script>
+</body>
+</html>

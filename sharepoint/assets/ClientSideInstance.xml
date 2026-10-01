@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Elements xmlns="http://schemas.microsoft.com/sharepoint/">
+    <ClientSideComponentInstance
+        Title="SideNavSharepoint"
+        Location="ClientSideExtension.ApplicationCustomizer"
+        ComponentId="16b85c69-936d-4fef-9542-3425774ecd4b"
+        Properties="{&quot;testMessage&quot;:&quot;Test message&quot;}">
+    </ClientSideComponentInstance>
+</Elements>
