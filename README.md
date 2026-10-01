@@ -17,55 +17,6 @@ Short summary on functionality and used technologies.
 
 > Get your own free development tenant by subscribing to [Microsoft 365 developer program](http://aka.ms/o365devprogram)
 
-## Prerequisites
-
-> Any special pre-requisites?
-
-Listed directory SideNavSharepoint
-Viewed package.json:1-38
-Viewed .yo-rc.json:1-21
-Listed directory src
-Listed directory extensions
-Listed directory sideNavSharepoint
-Viewed SideNavSharepointApplicationCustomizer.ts:1-40
-Listed directory config
-Viewed package-solution.json:1-47
-Listed directory sharepoint
-Listed directory assets
-Viewed ClientSideInstance.xml:1-9
-Viewed elements.xml:1-9
-Viewed SideNavSharepointApplicationCustomizer.manifest.json:1-18
-Ran command: `node -v; npm -v`
-Ran command: `npm run build`
-
-I have started a preliminary build test to verify the SharePoint Framework (SPFx) environment and build toolchain. I will monitor the result and proceed with creating the navbar component.
-
-Used tool: manage_task
-
-I am waiting for the initial Heft build to finish to ensure the SPFx toolchain compiles without issues.
-
-Used tool: manage_task
-
-The build process is currently running. I'll wait for the completion notification to proceed with the implementation.
-
-Viewed SideNavSharepointApplicationCustomizer.ts:1-37
-Viewed sass.json:1-5
-Viewed tsconfig.json:1-4
-Searched for "PlaceholderName"
-Ran command: `Get-ChildItem -Recurse -Filter "*sass*" node_modules/@microsoft`
-Viewed sass.json:1-111
-Viewed eslint.config.js:1-15
-Viewed myStrings.d.ts:1-9
-Created SideNavData.ts
-Created SideNavRenderer.ts
-Created SideNavSharepointApplicationCustomizer.ts
-Ran command: `npm run build`
-Edited SideNavSharepointApplicationCustomizer.ts
-Created preview.html
-Ran command: `npm run build`
-Ran command: `Get-Item "sharepoint\solution\side-nav.sppkg" | Select-Object FullName, Length, LastWriteTime`
-Browser task: "Verifying Navbar and Mega Menu in Browser"
-
 ### Summary of Work
 
 I have created the SharePoint vertical mega menu navbar based on your mockup and generated the production-ready `.sppkg` package file.
