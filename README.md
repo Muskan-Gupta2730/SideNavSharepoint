@@ -1,6 +1,9 @@
 # side-nav
 Run it on :  https://iproats.sharepoint.com/sites/SirvaDev/SitePages/Home.aspx?debugManifestsFile=https%3A%2F%2Flocalhost%3A4321%2Ftemp%2Fbuild%2Fmanifests.js&noredir=true&loadSPFX=true&customActions=%7B%2216b85c69-936d-4fef-9542-3425774ecd4b%22%3A%7B%22location%22%3A%22ClientSideExtension.ApplicationCustomizer%22%2C%22properties%22%3A%7B%22testMessage%22%3A%22Test+message%22%7D%7D%7D
 
+OR 
+
+file:///C:/Users/Muskan%20Gupta/Desktop/SideNavSharepoint/preview.html
 ## Summary
 
 Short summary on functionality and used technologies.
