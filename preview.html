@@ -29,32 +29,10 @@
       overflow-x: hidden;
     }
 
-    /* Concept note indicator at top like the mockup */
-    .concept-indicator-bar {
-      background: #e2e8f0;
-      border-bottom: 1px solid #cbd5e1;
-      padding: 6px 16px;
-      font-size: 13px;
-      color: #475569;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      z-index: 10002;
-      position: relative;
-    }
-    .concept-tag {
-      background: #1e1b4b;
-      color: #ffffff;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 2px 7px;
-      border-radius: 4px;
-    }
-
     /* Top Bar */
     .sirva-top-header {
       position: fixed;
-      top: 31px; /* below concept bar in preview */
+      top: 0;
       left: 0;
       right: 0;
       height: var(--sirva-top-height);
@@ -100,31 +78,10 @@
       margin-left: 2px;
     }
 
-    .sirva-top-right {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      color: #94a3b8;
-      font-size: 13px;
-    }
-    .sirva-btn-sppkg {
-      background: #8b5cf6;
-      color: white;
-      border: none;
-      padding: 6px 14px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
     /* Left Vertical Rail */
     .sirva-left-rail {
       position: fixed;
-      top: calc(var(--sirva-top-height) + 31px);
+      top: var(--sirva-top-height);
       left: 0;
       bottom: 0;
       width: var(--sirva-rail-width);
@@ -201,7 +158,7 @@
     .sirva-megamenu-panel {
       position: fixed;
       left: calc(var(--sirva-rail-width) + 2px);
-      top: calc(var(--sirva-top-height) + 31px + 12px);
+      top: calc(var(--sirva-top-height) + 12px);
       background: #ffffff;
       border-radius: 10px;
       box-shadow: 0 20px 48px -4px rgba(18, 9, 60, 0.22), 0 8px 20px -2px rgba(18, 9, 60, 0.1);
@@ -283,7 +240,7 @@
     /* Page Content Simulation */
     .page-content-wrapper {
       margin-left: var(--sirva-rail-width);
-      padding-top: calc(var(--sirva-top-height) + 31px);
+      padding-top: var(--sirva-top-height);
       min-height: 100vh;
       background: #f8fafc;
     }
@@ -293,98 +250,9 @@
       margin: 0 auto;
       padding: 32px 40px;
     }
-
-    .section-label {
-      font-size: 18px;
-      font-weight: 700;
-      color: #0f172a;
-      display: flex;
-      align-items: baseline;
-      gap: 12px;
-      margin-bottom: 8px;
-    }
-    .section-label span {
-      font-size: 13.5px;
-      color: #64748b;
-      font-weight: 400;
-    }
-
-    .banner-badge-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-      color: #475569;
-      margin-bottom: 16px;
-    }
-    .badge-2a {
-      background: #1e1b4b;
-      color: white;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 2px 7px;
-      border-radius: 4px;
-    }
-
-    /* Full bleed banner mockup */
-    .hero-banner-mock {
-      width: 100%;
-      height: 380px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, #1e0b57 0%, #3b0764 40%, #701a75 75%, #be185d 100%);
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      align-items: flex-end;
-      padding: 48px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    }
-
-    .hero-banner-mock::before {
-      content: "";
-      position: absolute;
-      top: -50%;
-      right: -10%;
-      width: 600px;
-      height: 600px;
-      background: radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, rgba(139, 92, 246, 0.1) 60%, transparent 80%);
-      border-radius: 50%;
-    }
-
-    .hero-banner-content {
-      position: relative;
-      z-index: 2;
-    }
-    .hero-category {
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      color: #38bdf8;
-      text-transform: uppercase;
-      margin-bottom: 8px;
-    }
-    .hero-title {
-      font-size: 38px;
-      font-weight: 800;
-      color: #ffffff;
-      line-height: 1.15;
-      margin-bottom: 12px;
-    }
-    .hero-desc {
-      font-size: 16px;
-      color: #e2e8f0;
-      max-width: 580px;
-      line-height: 1.5;
-    }
   </style>
 </head>
 <body>
-
-  <!-- Top Mockup Concept Bar -->
-  <div class="concept-indicator-bar">
-    <span class="concept-tag">1c</span>
-    <strong>Vertical - Mega menu</strong> Left rail, panel flies out over content — costs 220px of page width
-  </div>
 
   <!-- Top Bar -->
   <header class="sirva-top-header">
@@ -411,10 +279,6 @@
         <span class="sirva-brand-sirva">sirva</span><span class="sirva-brand-life">life</span>
       </span>
     </a>
-    <div class="sirva-top-right">
-      <span>SharePoint Application Customizer (SPFx 1.23.2)</span>
-      <span class="sirva-btn-sppkg">Package Ready: side-nav.sppkg</span>
-    </div>
   </header>
 
   <!-- Left Vertical Rail -->
@@ -497,14 +361,6 @@
   <!-- Page Content Simulation -->
   <div class="page-content-wrapper">
     <div class="content-container">
-      <div class="section-label">
-        Banner <span>Three ways to open a page</span>
-      </div>
-      <div class="banner-badge-row">
-        <span class="badge-2a">2a</span>
-        <strong>Full-bleed photo banner</strong> OOTB · Hero web part, one tile
-      </div>
-
       <div class="hero-banner-mock">
         <div class="hero-banner-content">
           <div class="hero-category">GLOBAL PEOPLE HUB</div>

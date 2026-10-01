@@ -2,7 +2,7 @@
 
 ## 1. Executive Overview
 
-This project implements the custom **Sirva Life Vertical Navbar & Mega Menu** as a **SharePoint Framework (SPFx 1.23.2)** Application Customizer extension, modeled precisely after the UI/UX design concept (`1c Vertical - Mega menu Left rail, panel flies out over content — costs 220px of page width`).
+This project implements the custom **Sirva Life Vertical Navbar & Mega Menu** as a **SharePoint Framework (SPFx 1.23.2)** extension with a 220px left navigation rail and interactive flyout mega menu.
 
 The solution is packaged as a ready-to-deploy SharePoint app package:  
 **`sharepoint/solution/side-nav.sppkg`**
