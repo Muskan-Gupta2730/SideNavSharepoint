@@ -4,6 +4,10 @@ Run it on :  https://iproats.sharepoint.com/sites/SirvaDev/SitePages/Home.aspx?d
 OR 
 
 file:///C:/Users/Muskan%20Gupta/Desktop/SideNavSharepoint/preview.html
+
+Preview: 
+ https://github.com/Muskan-Gupta2730/SideNavSharepoint/blob/main/Final.png
+
 ## Summary
 
 Short summary on functionality and used technologies.
