@@ -17,10 +17,6 @@ export interface ISideNavSharepointApplicationCustomizerProperties {
   navItemsJson?: string;
 }
 
-/**
- * Modern SharePoint Vertical Mega Menu Navbar Application Customizer
- * Implements the Sirva Life Left Rail & Flyout Mega Menu
- */
 export default class SideNavSharepointApplicationCustomizer
   extends BaseApplicationCustomizer<ISideNavSharepointApplicationCustomizerProperties> {
 
