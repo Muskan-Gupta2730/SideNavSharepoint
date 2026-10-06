@@ -157,6 +157,11 @@ body.sirva-has-rail .controlZone {
   width: auto !important;
   max-width: none !important;
 }
+  body.sirva-has-rail #spSiteHeader img[class*="logo" i],
+body.sirva-has-rail #spSiteHeader i[class*="logo" i],
+body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
+  display: none !important;
+}
 
  
 
