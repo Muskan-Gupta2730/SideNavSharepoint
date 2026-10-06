@@ -323,10 +323,10 @@ body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
         align-items: center;
         justify-content: space-between;
         padding: 11px 22px 11px 22px;
-        color: #d1d5db;
+        color: white;
         text-decoration: none;
-        font-size: 14.5px;
-        font-weight: 450;
+        font-size: 18px;
+        font-weight: 500;
         letter-spacing: 0.01em;
         position: relative;
         transition: all 0.18s ease;
