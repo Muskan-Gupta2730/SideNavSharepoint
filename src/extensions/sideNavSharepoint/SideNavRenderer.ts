@@ -108,23 +108,21 @@ export class SideNavRenderer {
         --sirva-offset: 60px;
       }
 
- body.sirva-has-rail #spPageCanvasContent,
-      body.sirva-has-rail .SPCanvas,
-      body.sirva-has-rail [data-automation-id="CanvasLayout"] {
-        margin-left: var(--sirva-offset) !important;
-        width: calc(100% - var(--sirva-offset)) !important;
-        box-sizing: border-box !important;
-      }
+/* Canvas internals must NEVER carry the offset */
+body.sirva-has-rail #spPageCanvasContent,
+body.sirva-has-rail .SPCanvas,
+body.sirva-has-rail [data-automation-id="CanvasLayout"],
+body.sirva-has-rail .CanvasZone,
+body.sirva-has-rail [data-automation-id="CanvasZone"],
+body.sirva-has-rail .CanvasSection,
+body.sirva-has-rail [data-automation-id="CanvasSection"],
+body.sirva-has-rail .controlZone {
+  margin-left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
 
-        
-      body.sirva-has-rail .CanvasSection,
-      body.sirva-has-rail [data-automation-id="CanvasSection"],
-      body.sirva-has-rail .controlZone {
-        max-width: 1100px !important;
-        margin-left: auto !important;
-        margin-right: auto !important;
-        box-sizing: border-box !important;
-      }
       body.sirva-has-rail [data-automation-id="pageCommandBar"],
 body.sirva-has-rail [data-automation-id="pageCommandBar"],
       body.sirva-has-rail [data-automation-id="CanvasCommandBar"] {
@@ -456,9 +454,7 @@ private forceAlignContent(): void {
       // SharePoint ke saare primary wrappers jinhe shift karna hai
       const shiftSelectors = [
         '[data-automation-id="contentScrollRegion"]',
-        '#spPageCanvasContent',
-        '.SPCanvas',
-        '[data-automation-id="CanvasLayout"]',
+      
         'div[class*="canvasZone"]',
         'div[class*="controlZone"]'
       ];
@@ -820,52 +816,18 @@ private forceAlignContent(): void {
 
 
 
-   private collectShiftTargets(): HTMLElement[] {
-    const directSelectors = [
-      '[data-automation-id="contentScrollRegion"]',
-      '#spPageCanvasContent',
-      '#workbenchPageContent',
-      '.SPCanvas',
-      '[data-automation-id="CanvasLayout"]'
-    ];
-
-    const targets: HTMLElement[] = [];
-    for (const sel of directSelectors) {
-      document.querySelectorAll(sel).forEach((node) => {
-        const el = node as HTMLElement;
-        if (el && !this.isSuiteChrome(el) && targets.indexOf(el) === -1) {
-          targets.push(el);
-        }
-      });
-    }
-
-    if (targets.length > 0) {
-      return targets;
-    }
-
-    // Fallback search if specific automation IDs are missing
-    const candidates: HTMLElement[] = [];
-    document.querySelectorAll('div, main, section').forEach((node: Element): void => {
+private collectShiftTargets(): HTMLElement[] {
+  const targets: HTMLElement[] = [];
+  document
+    .querySelectorAll('[data-automation-id="contentScrollRegion"]')
+    .forEach((node) => {
       const el = node as HTMLElement;
-      if (this.isSuiteChrome(el)) return;
-      const rect = el.getBoundingClientRect();
-      const cs = window.getComputedStyle(el);
-      const isPositioned = cs.position === 'fixed' || cs.position === 'absolute' || cs.position === 'sticky';
-      if (
-        isPositioned &&
-        rect.left < 60 &&
-        rect.width > window.innerWidth * 0.6 &&
-        rect.top >= 0 && rect.top < window.innerHeight
-      ) {
-        candidates.push(el);
+      if (!this.isSuiteChrome(el)) {
+        targets.push(el);
       }
     });
-
-    return candidates.filter((el: HTMLElement): boolean => 
-      !candidates.some((other: HTMLElement): boolean => other !== el && other.contains(el))
-    );
-  }
-
+  return targets;
+}
   private stopShiftGuard(): void {
     if (this._shiftObserver) {
       this._shiftObserver.disconnect();
