@@ -109,7 +109,8 @@ export class SideNavRenderer {
     style.textContent = `
       :root {
        --sirva-gap: 12px;
-        --sirva-bg-dark: #15083f;
+        --sirva-bg-dark:
+#150056;
         --sirva-bg-dark-hover: #29155f;
         --sirva-bg-dark-active: #2b1461;
         --sirva-rail-width: 240px;
