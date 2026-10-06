@@ -108,6 +108,7 @@ export class SideNavRenderer {
 
     style.textContent = `
       :root {
+       --sirva-gap: 12px;
         --sirva-bg-dark: #15083f;
         --sirva-bg-dark-hover: #29155f;
         --sirva-bg-dark-active: #2b1461;
@@ -121,13 +122,17 @@ export class SideNavRenderer {
     /* =========================================================
          SharePoint Layout Integration & Absolute Content Fix
          ========================================================= */
-
-      #sp-appBar {
-        display: none !important;
-        width: 0 !important;
-        min-width: 0 !important;
-      }
-
+/* Reserve the rail's space with SharePoint's own left app bar */
+#sp-appBar {
+  display: block !important;
+  visibility: hidden !important;
+  width: calc(var(--sirva-offset, 240px) + var(--sirva-gap)) !important;
+  min-width: calc(var(--sirva-offset, 240px) + var(--sirva-gap)) !important;
+  flex: 0 0 calc(var(--sirva-offset, 240px) + var(--sirva-gap)) !important;
+  transition: width 0.22s cubic-bezier(0.2, 0, 0, 1),
+              min-width 0.22s cubic-bezier(0.2, 0, 0, 1),
+              flex-basis 0.22s cubic-bezier(0.2, 0, 0, 1);
+}
       body.sirva-has-rail {
         --sirva-offset: var(--sirva-rail-width);
         overflow-x: auto !important;
@@ -139,45 +144,21 @@ export class SideNavRenderer {
         --sirva-offset: 60px;
       }
 
-/* Canvas internals must NEVER carry the offset */
+body.sirva-has-rail [data-automation-id="pageCommandBar"],
+body.sirva-has-rail [data-automation-id="CanvasCommandBar"],
+body.sirva-has-rail div[class*="commandBarWrapper"],
+body.sirva-has-rail div[class*="canvasControl"],
+body.sirva-has-rail [data-automation-id="pageHeader"],
 body.sirva-has-rail #spPageCanvasContent,
 body.sirva-has-rail .SPCanvas,
 body.sirva-has-rail [data-automation-id="CanvasLayout"],
-body.sirva-has-rail .CanvasZone,
-body.sirva-has-rail [data-automation-id="CanvasZone"],
-body.sirva-has-rail .CanvasSection,
-body.sirva-has-rail [data-automation-id="CanvasSection"],
 body.sirva-has-rail .controlZone {
   margin-left: 0 !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
+  width: auto !important;
+  max-width: none !important;
 }
 
-      body.sirva-has-rail [data-automation-id="pageCommandBar"],
-body.sirva-has-rail [data-automation-id="pageCommandBar"],
-      body.sirva-has-rail [data-automation-id="CanvasCommandBar"] {
-        margin-left: var(--sirva-offset) !important;
-        width: calc(100% - var(--sirva-offset)) !important;
-        box-sizing: border-box !important;
-      }
-      body.sirva-has-rail div[class*="commandBarWrapper"],
-      body.sirva-has-rail div[class*="canvasControl"] {
-        margin-left: var(--sirva-offset) !important;
-        width: calc(100% - var(--sirva-offset)) !important;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-        transition: margin-left 0.22s cubic-bezier(0.2, 0, 0, 1), width 0.22s cubic-bezier(0.2, 0, 0, 1) !important;
-      }
-
-      /* Ensure absolute-positioned headers/command strips within canvas also clear the rail */
-      body.sirva-has-rail .controlZone,
-      body.sirva-has-rail [data-automation-id="pageHeader"] {
-        position: relative !important;
-        margin-left: var(--sirva-offset) !important;
-        width: calc(100% - var(--sirva-offset)) !important;
-        box-sizing: border-box !important;
-      }
+ 
 
       /* Main Wrapper */
       .sirva-nav-root {
@@ -460,6 +441,7 @@ body.sirva-has-rail [data-automation-id="pageCommandBar"],
         transform: translateX(3px);
       }
 
+
       .sirva-rail-footer {
         display: none !important;
       }
@@ -476,6 +458,9 @@ body.sirva-has-rail [data-automation-id="pageCommandBar"],
         }
       }
     `;
+
+
+
   }
 
 private forceAlignContent(): void {
@@ -816,47 +801,11 @@ private forceAlignContent(): void {
     el.style.removeProperty('overflow-x');
   }
 
-  private offsetElement(el: HTMLElement, apply: boolean): void {
-    if (this.isSuiteChrome(el)) {
-      return;
-    }
-
-    if (!apply) {
-      this.clearOffsetStyles(el);
-      return;
-    }
-
-    const offset = this.getOffsetPx();
-    const position = window.getComputedStyle(el).position;
-    if (position === 'absolute' || position === 'fixed' || position === 'sticky') {
-      el.style.setProperty('left', offset, 'important');
-      el.style.setProperty('right', '0', 'important');
-      el.style.setProperty('width', `calc(100% - ${offset})`, 'important');
-      el.style.setProperty('max-width', `calc(100% - ${offset})`, 'important');
-      el.style.removeProperty('margin-left');
-    } else {
-      el.style.setProperty('margin-left', offset, 'important');
-      el.style.setProperty('width', `calc(100% - ${offset})`, 'important');
-      el.style.setProperty('max-width', `calc(100% - ${offset})`, 'important');
-    }
-    el.style.setProperty('overflow-x', 'auto', 'important');
-    el.style.setProperty('box-sizing', 'border-box', 'important');
-  }
 
 
 
-private collectShiftTargets(): HTMLElement[] {
-  const targets: HTMLElement[] = [];
-  document
-    .querySelectorAll('[data-automation-id="contentScrollRegion"]')
-    .forEach((node) => {
-      const el = node as HTMLElement;
-      if (!this.isSuiteChrome(el)) {
-        targets.push(el);
-      }
-    });
-  return targets;
-}
+
+
   private stopShiftGuard(): void {
     if (this._shiftObserver) {
       this._shiftObserver.disconnect();
@@ -868,68 +817,16 @@ private collectShiftTargets(): HTMLElement[] {
     }
   }
 
-  private startShiftGuard(): void {
-    this.stopShiftGuard();
-    this._shiftObserver = new MutationObserver(() => {
-      if (this._enforcingShift) {
-        return;
-      }
-      if (this._shiftGuardTimer !== null) {
-        window.clearTimeout(this._shiftGuardTimer);
-      }
-      this._shiftGuardTimer = window.setTimeout(() => {
-        this.applyMainContentShift(true);
-      }, 80);
-    });
-    this._shiftObserver.observe(document.body, {
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['style', 'class']
-    });
-  }
+
 
   private clearShiftedElements(): void {
     this._shiftedElements.forEach((el) => this.clearOffsetStyles(el));
     this._shiftedElements = [];
   }
 
-  private applyMainContentShift(apply: boolean): void {
-    if (apply) {
-      document.body.classList.add('sirva-has-rail');
-      document.documentElement.classList.add('sirva-has-rail');
-      if (!this._shiftObserver) {
-        this.startShiftGuard();
-      }
-    } else {
-      document.body.classList.remove('sirva-has-rail');
-      document.documentElement.classList.remove('sirva-has-rail');
-      this.stopShiftGuard();
-    }
-
-    const doShift = () => {
-      this.syncRailTop();
-      this._enforcingShift = true;
-
-      if (!apply) {
-        this.clearShiftedElements();
-        this._enforcingShift = false;
-        return;
-      }
-
-      const targets = this.collectShiftTargets();
-      this._shiftedElements.forEach((el) => {
-        if (targets.indexOf(el) === -1) {
-          this.clearOffsetStyles(el);
-        }
-      });
-      targets.forEach((el) => this.offsetElement(el, true));
-      this._shiftedElements = targets;
-      this._enforcingShift = false;
-    };
-
-    doShift();
-    setTimeout(doShift, 400);
-    setTimeout(doShift, 1000);
-    setTimeout(doShift, 2500);
-  }
+private applyMainContentShift(apply: boolean): void {
+  document.body.classList.toggle('sirva-has-rail', apply);
+  document.documentElement.classList.toggle('sirva-has-rail', apply);
+  this.syncRailTop();
+}
 }
