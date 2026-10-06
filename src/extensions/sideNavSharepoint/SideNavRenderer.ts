@@ -114,7 +114,7 @@ export class SideNavRenderer {
         --sirva-bg-dark-active: #2b1461;
         --sirva-rail-width: 240px;
         --sirva-top-height: 56px;
-        --sirva-cyan: #22d3ee;
+        --sirva-cyan: white;
         --sirva-purple-text: #a855f7;
         --sirva-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       }
