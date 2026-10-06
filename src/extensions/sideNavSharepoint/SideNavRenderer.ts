@@ -517,8 +517,7 @@ private forceAlignContent(): void {
       return;
     }
 
-    const logoPath = (typeof Img === 'string' ? Img : (Img as any)?.default || (Img as any)?.uri || '') || 
-      'https://iproats.sharepoint.com/:i:/s/SirvaDev/IQBJ0KOPBRX3S70aIy9qcdzZAQphKFoIr-A71HX9UFybIJk?e=CV9QY7';
+    const logoPath = (typeof Img === 'string' ? Img : (Img as any)?.default || (Img as any)?.uri || '');
 
     const collapseIcon = `
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
