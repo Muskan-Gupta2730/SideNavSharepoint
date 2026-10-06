@@ -24,8 +24,8 @@ export const DEFAULT_NAV_ITEMS: INavItem[] = [
   {
     id: 'home',
     title: 'Home',
-    url: '#',
-    isActive: true,
+    url: 'https://iproats.sharepoint.com/sites/SirvaDev/SitePages/Home.aspx',
+    isActive: false,
     hasChevron: false,
     children: undefined,
     icon: ""
@@ -51,7 +51,7 @@ export const DEFAULT_NAV_ITEMS: INavItem[] = [
   {
     id: 'country',
     title: 'Country',
-    url: '#',
+    url: 'https://iproats.sharepoint.com/sites/SirvaDev/SitePages/AustraliaHubb.aspx',
     isActive: false,
     hasChevron: false,
     children: undefined,

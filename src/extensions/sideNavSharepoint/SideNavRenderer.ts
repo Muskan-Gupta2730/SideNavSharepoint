@@ -33,6 +33,7 @@ export class SideNavRenderer {
     this.injectStyles();
     this.buildDom();
     this.attachEvents();
+     this.updateActiveFromUrl();
     this.syncRailTop();
     this._onResize = () => this.syncRailTop();
     window.addEventListener('resize', this._onResize);
@@ -43,9 +44,39 @@ export class SideNavRenderer {
 
   /** Call after SPA navigation to re-apply the content offset without rebuilding the nav DOM. */
   public refreshShift(): void {
+    this.updateActiveFromUrl(); 
     if (this._options.shiftMainContent !== false) {
       this.applyMainContentShift(true);
     }
+  }
+
+  private updateActiveFromUrl(): void {
+    if (!this._container) {
+      return;
+    }
+
+    const normalize = (p: string): string => p.toLowerCase().replace(/\/$/, '');
+    const current = normalize(window.location.pathname);
+
+    let activeId: string | null = null;
+    for (const item of this._navItems) {
+      if (!item.url || item.url === '#') {
+        continue;
+      }
+      try {
+        const itemPath = normalize(new URL(item.url, window.location.origin).pathname);
+        if (itemPath === current) {
+          activeId = item.id;
+          break;
+        }
+      } catch {
+        // ignore malformed URLs
+      }
+    }
+
+    this._container.querySelectorAll('.sirva-nav-item').forEach((el) => {
+      el.classList.toggle('is-active', el.getAttribute('data-item-id') === activeId);
+    });
   }
 
   public dispose(): void {
@@ -609,9 +640,7 @@ private forceAlignContent(): void {
       });
 
       itemEl.addEventListener('click', (e) => {
-        items.forEach((it) => it.classList.remove('is-active'));
-        itemEl.classList.add('is-active');
-
+      
         if (itemData && itemData.columns && itemData.columns.length > 0) {
           e.preventDefault();
           this.openFlyout(itemData, itemEl as HTMLElement, panel, grid);
