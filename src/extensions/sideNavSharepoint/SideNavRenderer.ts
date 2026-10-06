@@ -1,9 +1,11 @@
 import { INavItem, DEFAULT_NAV_ITEMS } from './SideNavData';
+import Img from "../../img/logo.jpg";
 
 export interface ISideNavOptions {
   navItems?: INavItem[];
   siteTitle?: string;
   shiftMainContent?: boolean;
+  logoUrl?: string;
 }
 
 export class SideNavRenderer {
@@ -13,6 +15,11 @@ export class SideNavRenderer {
   private _activeFlyoutId: string | null = null;
   private _closeTimeout: number | null = null;
   private _isCollapsed: boolean = false;
+  private _shiftedElements: HTMLElement[] = [];
+  private _onResize: (() => void) | null = null;
+  private _shiftObserver: MutationObserver | null = null;
+  private _shiftGuardTimer: number | null = null;
+  private _enforcingShift: boolean = false;
 
   public constructor(options?: ISideNavOptions) {
     this._options = options || {};
@@ -26,13 +33,31 @@ export class SideNavRenderer {
     this.injectStyles();
     this.buildDom();
     this.attachEvents();
+    this.syncRailTop();
+    this._onResize = () => this.syncRailTop();
+    window.addEventListener('resize', this._onResize);
+    if (this._options.shiftMainContent !== false) {
+      this.applyMainContentShift(true);
+    }
+  }
+
+  /** Call after SPA navigation to re-apply the content offset without rebuilding the nav DOM. */
+  public refreshShift(): void {
     if (this._options.shiftMainContent !== false) {
       this.applyMainContentShift(true);
     }
   }
 
   public dispose(): void {
+    this._isCollapsed = false;
+    document.body.classList.remove('sirva-rail-collapsed');
+    document.documentElement.classList.remove('sirva-has-rail');
+    if (this._onResize) {
+      window.removeEventListener('resize', this._onResize);
+      this._onResize = null;
+    }
     this.applyMainContentShift(false);
+    this.stopShiftGuard();
     const styleEl = document.getElementById('sirva-sidenav-custom-styles');
     if (styleEl && styleEl.parentNode) {
       styleEl.parentNode.removeChild(styleEl);
@@ -43,40 +68,86 @@ export class SideNavRenderer {
   }
 
   private injectStyles(): void {
-    if (document.getElementById('sirva-sidenav-custom-styles')) {
-      return;
+    let style = document.getElementById('sirva-sidenav-custom-styles') as HTMLStyleElement | null;
+    if (!style) {
+      style = document.createElement('style');
+      style.id = 'sirva-sidenav-custom-styles';
+      document.head.appendChild(style);
     }
 
-    const style = document.createElement('style');
-    style.id = 'sirva-sidenav-custom-styles';
     style.textContent = `
       :root {
         --sirva-bg-dark: #15083f;
         --sirva-bg-dark-hover: #29155f;
         --sirva-bg-dark-active: #2b1461;
-        --sirva-rail-width: 220px;
+        --sirva-rail-width: 240px;
         --sirva-top-height: 56px;
         --sirva-cyan: #22d3ee;
         --sirva-purple-text: #a855f7;
         --sirva-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       }
 
-      /* Global Layout Integration for SharePoint */
-      body.sirva-has-rail #spPageCanvasContent,
-      body.sirva-has-rail #workbenchPageContent,
-      body.sirva-has-rail [data-automation-id="contentScrollRegion"],
-      body.sirva-has-rail [data-automation-id="CanvasControl"],
-      body.sirva-has-rail .sp-appBar {
-        margin-left: var(--sirva-rail-width) !important;
-        transition: margin-left 0.25s cubic-bezier(0.2, 0, 0, 1);
+    /* =========================================================
+         SharePoint Layout Integration & Absolute Content Fix
+         ========================================================= */
+
+      #sp-appBar {
+        display: none !important;
+        width: 0 !important;
+        min-width: 0 !important;
       }
 
-      body.sirva-rail-collapsed #spPageCanvasContent,
-      body.sirva-rail-collapsed #workbenchPageContent,
-      body.sirva-rail-collapsed [data-automation-id="contentScrollRegion"],
-      body.sirva-rail-collapsed [data-automation-id="CanvasControl"],
-      body.sirva-rail-collapsed .sp-appBar {
-        margin-left: 0px !important;
+      body.sirva-has-rail {
+        --sirva-offset: var(--sirva-rail-width);
+        overflow-x: auto !important;
+      }
+      html.sirva-has-rail {
+        overflow-x: auto !important;
+      }
+      body.sirva-has-rail.sirva-rail-collapsed {
+        --sirva-offset: 60px;
+      }
+
+ body.sirva-has-rail #spPageCanvasContent,
+      body.sirva-has-rail .SPCanvas,
+      body.sirva-has-rail [data-automation-id="CanvasLayout"] {
+        margin-left: var(--sirva-offset) !important;
+        width: calc(100% - var(--sirva-offset)) !important;
+        box-sizing: border-box !important;
+      }
+
+        
+      body.sirva-has-rail .CanvasSection,
+      body.sirva-has-rail [data-automation-id="CanvasSection"],
+      body.sirva-has-rail .controlZone {
+        max-width: 1100px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        box-sizing: border-box !important;
+      }
+      body.sirva-has-rail [data-automation-id="pageCommandBar"],
+body.sirva-has-rail [data-automation-id="pageCommandBar"],
+      body.sirva-has-rail [data-automation-id="CanvasCommandBar"] {
+        margin-left: var(--sirva-offset) !important;
+        width: calc(100% - var(--sirva-offset)) !important;
+        box-sizing: border-box !important;
+      }
+      body.sirva-has-rail div[class*="commandBarWrapper"],
+      body.sirva-has-rail div[class*="canvasControl"] {
+        margin-left: var(--sirva-offset) !important;
+        width: calc(100% - var(--sirva-offset)) !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        transition: margin-left 0.22s cubic-bezier(0.2, 0, 0, 1), width 0.22s cubic-bezier(0.2, 0, 0, 1) !important;
+      }
+
+      /* Ensure absolute-positioned headers/command strips within canvas also clear the rail */
+      body.sirva-has-rail .controlZone,
+      body.sirva-has-rail [data-automation-id="pageHeader"] {
+        position: relative !important;
+        margin-left: var(--sirva-offset) !important;
+        width: calc(100% - var(--sirva-offset)) !important;
+        box-sizing: border-box !important;
       }
 
       /* Main Wrapper */
@@ -89,20 +160,14 @@ export class SideNavRenderer {
         box-sizing: border-box;
       }
 
-      /* Top Header Bar */
-      .sirva-top-header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: var(--sirva-top-height);
-        background: var(--sirva-bg-dark);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        z-index: 10001;
+      .sirva-rail-brand {
+        height: 56px;
+        flex-shrink: 0;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0 18px 0 20px;
+        padding: 0 10px 0 14px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       }
 
       /* Brand Area */
@@ -112,32 +177,31 @@ export class SideNavRenderer {
         gap: 10px;
         text-decoration: none;
         color: #ffffff;
-        width: 180px;
         user-select: none;
+        max-width: 260px;
       }
       .sirva-brand-icon {
-        width: 28px;
-        height: 28px;
+        width: 34px;
+        height: 34px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
       }
+      .sirva-brand-logo-img {
+        width: 34px;
+        height: 34px;
+        object-fit: contain;
+        border-radius: 4px;
+        display: block;
+      }
       .sirva-brand-text {
-        font-size: 20px;
-        letter-spacing: -0.02em;
-        line-height: 1;
-        display: flex;
-        align-items: baseline;
-      }
-      .sirva-brand-sirva {
-        font-weight: 300;
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        line-height: 1.2;
         color: #ffffff;
-      }
-      .sirva-brand-life {
-        font-weight: 700;
-        color: #ffffff;
-        margin-left: 2px;
+        white-space: nowrap;
       }
 
       /* Top Bar Right Tools */
@@ -163,26 +227,63 @@ export class SideNavRenderer {
         color: #ffffff;
       }
 
-      /* Left Vertical Rail */
+      /* Left Vertical Rail — below the native blue suite bar, always on screen */
       .sirva-left-rail {
         position: fixed;
-        top: var(--sirva-top-height);
+        top: 48px;
         left: 0;
         bottom: 0;
-        width: var(--sirva-rail-width);
+        width: 240px;
         background: var(--sirva-bg-dark);
         z-index: 10000;
-        display: flex;
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: all !important;
         flex-direction: column;
-        justify-content: space-between;
-        padding-top: 16px;
-        padding-bottom: 20px;
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.15);
-        transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1);
+        transition: width 0.22s cubic-bezier(0.2, 0, 0, 1), top 0.15s ease;
+        overflow: hidden;
+        transform: none !important;
       }
 
-      .sirva-rail-collapsed .sirva-left-rail {
-        transform: translateX(-100%);
+      body.sirva-rail-collapsed .sirva-left-rail {
+        width: 60px;
+      }
+      body.sirva-rail-collapsed .sirva-brand-text,
+      body.sirva-rail-collapsed .sirva-nav-scroll,
+      body.sirva-rail-collapsed .sirva-rail-footer {
+        display: none !important;
+      }
+      body.sirva-rail-collapsed .sirva-rail-brand {
+        padding: 0;
+        justify-content: center;
+      }
+      body.sirva-rail-collapsed .sirva-brand {
+        display: none !important;
+      }
+
+      /* Scrollable Nav Wrapper */
+      .sirva-nav-scroll {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 12px 0;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,0.18) transparent;
+      }
+      .sirva-nav-scroll::-webkit-scrollbar {
+        width: 4px;
+      }
+      .sirva-nav-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .sirva-nav-scroll::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.18);
+        border-radius: 2px;
+      }
+      .sirva-nav-scroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(255,255,255,0.32);
       }
 
       /* Navigation Menu List */
@@ -231,7 +332,7 @@ export class SideNavRenderer {
         font-weight: 500;
       }
 
-      /* Selected / Flyout Open State (e.g. Pay & benefits) */
+      /* Selected / Flyout Open State */
       .sirva-nav-item.is-flyout-open .sirva-nav-link {
         background: var(--sirva-bg-dark-active);
         color: #ffffff;
@@ -254,15 +355,15 @@ export class SideNavRenderer {
       /* Mega Menu Flyout Panel */
       .sirva-megamenu-panel {
         position: fixed;
-        left: calc(var(--sirva-rail-width) + 8px);
+        left: calc(var(--sirva-rail-width) + 16px);
         top: calc(var(--sirva-top-height) + 14px);
         background: #ffffff;
         border-radius: 10px;
         box-shadow: 0 18px 45px -4px rgba(18, 9, 60, 0.22), 0 6px 18px -2px rgba(18, 9, 60, 0.1);
         padding: 30px 42px 34px 42px;
-        z-index: 10005;
-        min-width: 620px;
-        max-width: 780px;
+        z-index: 10010;
+        min-width: 580px;
+        max-width: 760px;
         display: none;
         opacity: 0;
         transform: translateY(4px);
@@ -270,7 +371,6 @@ export class SideNavRenderer {
         border: 1px solid rgba(0, 0, 0, 0.05);
       }
 
-      /* Invisible hit-area bridge to avoid mouse leaving flyout */
       .sirva-megamenu-panel::before {
         content: "";
         position: absolute;
@@ -331,20 +431,10 @@ export class SideNavRenderer {
         transform: translateX(3px);
       }
 
-      /* Bottom Rail Footer */
       .sirva-rail-footer {
-        padding: 12px 22px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
-      }
-      .sirva-rail-footer-text {
-        font-size: 11.5px;
-        color: #94a3b8;
+        display: none !important;
       }
 
-      /* Mobile and Responsive adjustments */
       @media (max-width: 768px) {
         .sirva-megamenu-panel {
           min-width: 90vw;
@@ -357,8 +447,51 @@ export class SideNavRenderer {
         }
       }
     `;
+  }
 
-    document.head.appendChild(style);
+private forceAlignContent(): void {
+    const applyFixes = () => {
+      const railWidth = document.body.classList.contains('sirva-rail-collapsed') ? '60px' : '240px';
+      
+      // SharePoint ke saare primary wrappers jinhe shift karna hai
+      const shiftSelectors = [
+        '[data-automation-id="contentScrollRegion"]',
+        '#spPageCanvasContent',
+        '.SPCanvas',
+        '[data-automation-id="CanvasLayout"]',
+        'div[class*="canvasZone"]',
+        'div[class*="controlZone"]'
+      ];
+
+      shiftSelectors.forEach(selector => {
+        document.querySelectorAll(selector).forEach(element => {
+          const el = element as HTMLElement;
+          el.style.setProperty('margin-left', railWidth, 'important');
+          el.style.setProperty('width', `calc(100% - ${railWidth})`, 'important');
+          el.style.setProperty('box-sizing', 'border-box', 'important');
+        });
+      });
+
+      // Saare inner canvas sections/zones ko center align karne ke liye
+      const centerSelectors = [
+        '.CanvasZone',
+        '[data-automation-id="CanvasZone"]',
+        'div[class*="CanvasZone"]'
+      ];
+
+      centerSelectors.forEach(selector => {
+        document.querySelectorAll(selector).forEach(element => {
+          const el = element as HTMLElement;
+          el.style.setProperty('max-width', '1100px', 'important');
+          el.style.setProperty('margin-left', 'auto', 'important');
+          el.style.setProperty('margin-right', 'auto', 'important');
+          el.style.setProperty('width', '100%', 'important');
+        });
+      });
+    };
+
+    setInterval(applyFixes, 400);
+    window.addEventListener('resize', applyFixes);
   }
 
   private buildDom(): void {
@@ -366,24 +499,8 @@ export class SideNavRenderer {
       return;
     }
 
-    const logoSvg = `
-      <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="20" cy="20" r="18" stroke="url(#swirlGradient1)" stroke-width="3.5" stroke-dasharray="75 35" stroke-linecap="round"/>
-        <circle cx="20" cy="20" r="12" stroke="url(#swirlGradient2)" stroke-width="3.5" stroke-dasharray="45 25" stroke-linecap="round"/>
-        <circle cx="20" cy="20" r="5.5" fill="#22d3ee"/>
-        <defs>
-          <linearGradient id="swirlGradient1" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stop-color="#22d3ee"/>
-            <stop offset="50%" stop-color="#a855f7"/>
-            <stop offset="100%" stop-color="#ec4899"/>
-          </linearGradient>
-          <linearGradient id="swirlGradient2" x1="40" y1="40" x2="0" y2="0" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stop-color="#06b6d4"/>
-            <stop offset="100%" stop-color="#d946ef"/>
-          </linearGradient>
-        </defs>
-      </svg>
-    `;
+    const logoPath = (typeof Img === 'string' ? Img : (Img as any)?.default || (Img as any)?.uri || '') || 
+      'https://iproats.sharepoint.com/:i:/s/SirvaDev/IQBJ0KOPBRX3S70aIy9qcdzZAQphKFoIr-A71HX9UFybIJk?e=CV9QY7';
 
     const collapseIcon = `
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -408,26 +525,32 @@ export class SideNavRenderer {
 
     this._container.innerHTML = `
       <div class="sirva-nav-root" id="sirvaNavRoot">
-        <!-- Top Bar -->
-        <header class="sirva-top-header">
-          <a href="#" class="sirva-brand" title="Sirva Life">
-            <span class="sirva-brand-icon">${logoSvg}</span>
-            <span class="sirva-brand-text">
-              <span class="sirva-brand-sirva">sirva</span><span class="sirva-brand-life">life</span>
-            </span>
-          </a>
-          <div class="sirva-top-tools">
-            <button class="sirva-rail-toggle-btn" id="sirvaRailToggle" title="Toggle Navigation Rail" aria-label="Toggle Navigation Rail">
-              ${collapseIcon}
-            </button>
-          </div>
-        </header>
-
-        <!-- Left Vertical Rail -->
         <aside class="sirva-left-rail" id="sirvaLeftRail" role="navigation" aria-label="Primary Navigation">
-          <ul class="sirva-nav-list">
-            ${navItemsHtml}
-          </ul>
+          <div class="sirva-rail-brand">
+            <a href="#" class="sirva-brand" title="Global People Hub">
+              <span class="sirva-brand-icon">
+                ${logoPath
+                  ? `<img class="sirva-brand-logo-img" id="sirvaBrandLogo" src="${logoPath}" alt="Logo" />`
+                  : ''}
+                <span id="sirvaBrandLogoFallback" style="display:${logoPath ? 'none' : 'flex'}; width:34px; height:34px; border-radius:8px; background:linear-gradient(135deg,#22d3ee,#a855f7); align-items:center; justify-content:center; flex-shrink:0;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                  </svg>
+                </span>
+              </span>
+              <span class="sirva-brand-text">Global People Hub</span>
+            </a>
+            <div class="sirva-top-tools">
+              <button class="sirva-rail-toggle-btn" id="sirvaRailToggle" title="Toggle Navigation Rail" aria-label="Toggle Navigation Rail">
+                ${collapseIcon}
+              </button>
+            </div>
+          </div>
+          <div class="sirva-nav-scroll">
+            <ul class="sirva-nav-list">
+              ${navItemsHtml}
+            </ul>
+          </div>
           <div class="sirva-rail-footer">
             <span class="sirva-rail-footer-text">Global People Hub</span>
           </div>
@@ -441,6 +564,19 @@ export class SideNavRenderer {
         </div>
       </div>
     `;
+
+    const logoImg = this._container.querySelector('#sirvaBrandLogo') as HTMLImageElement | null;
+    if (logoImg) {
+      if (!logoPath) {
+        logoImg.style.display = 'none';
+      } else {
+        logoImg.addEventListener('error', () => {
+          logoImg.style.display = 'none';
+          const fallback = this._container?.querySelector('#sirvaBrandLogoFallback') as HTMLElement | null;
+          if (fallback) { fallback.style.display = 'flex'; }
+        });
+      }
+    }
   }
 
   private attachEvents(): void {
@@ -477,7 +613,6 @@ export class SideNavRenderer {
       });
 
       itemEl.addEventListener('click', (e) => {
-        // Toggle active link visual
         items.forEach((it) => it.classList.remove('is-active'));
         itemEl.classList.add('is-active');
 
@@ -498,18 +633,24 @@ export class SideNavRenderer {
       });
     }
 
-    // Close on Escape key
     document.addEventListener('keydown', (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         this.closeFlyout(panel);
       }
     });
 
-    // Close on clicking outside
     document.addEventListener('click', (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (panel && !panel.contains(target) && !this._container?.contains(target)) {
         this.closeFlyout(panel);
+      }
+
+      const hamburger = target.closest(
+        'button[data-automation-id="HamburgerToggle"], button[aria-label*="avigation"], button[title*="avigation"], [data-automation-id="nav-toggle"]'
+      );
+      if (hamburger) {
+        window.setTimeout(() => this.applyMainContentShift(true), 150);
+        window.setTimeout(() => this.applyMainContentShift(true), 500);
       }
     });
   }
@@ -526,12 +667,10 @@ export class SideNavRenderer {
 
     this._activeFlyoutId = itemData.id;
 
-    // Highlight left rail item
     const allItems = this._container?.querySelectorAll('.sirva-nav-item');
     allItems?.forEach((it) => it.classList.remove('is-flyout-open'));
     itemEl.classList.add('is-flyout-open');
 
-    // Generate 3-column HTML
     const columnsHtml = itemData.columns.map((col) => {
       const linksHtml = col.items.map((sub) => {
         return `
@@ -555,7 +694,6 @@ export class SideNavRenderer {
 
     grid.innerHTML = columnsHtml;
 
-    // Position panel nicely aligned with top bar or hovered item
     const rect = itemEl.getBoundingClientRect();
     const panelTop = Math.max(rect.top - 12, 60);
     panel.style.top = `${panelTop}px`;
@@ -597,14 +735,210 @@ export class SideNavRenderer {
     } else {
       document.body.classList.remove('sirva-rail-collapsed');
     }
+
+    if (this._options.shiftMainContent !== false) {
+      this.applyMainContentShift(true);
+    }
+  }
+
+  private syncRailTop(): void {
+    const suite = document.querySelector(
+      '#SuiteNavWrapper, #O365_NavHeader, [data-automationid="SimpleSuiteHeader"], [data-automationid="FluentSuiteHeader"]'
+    ) as HTMLElement | null;
+
+    let height = 48;
+    if (suite) {
+      const measured = Math.round(suite.getBoundingClientRect().height);
+      if (measured > 0) {
+        height = measured;
+      }
+    }
+
+    const rail = this._container?.querySelector('.sirva-left-rail') as HTMLElement | null;
+    if (rail) {
+      rail.style.top = `${height}px`;
+    }
+  }
+
+  private getOffsetPx(): string {
+    return this._isCollapsed ? '60px' : '240px';
+  }
+
+  private isSuiteChrome(el: HTMLElement): boolean {
+    if (
+      el.id === 'SuiteNavWrapper' ||
+      el.id === 'O365_NavHeader' ||
+      el.id === 'O365_Header' ||
+      el.id === 'sirva-sidenav-extension-root' ||
+      el.id === 'sirvaNavRoot' ||
+      el.classList.contains('sirva-left-rail') ||
+      el.classList.contains('sirva-nav-root')
+    ) {
+      return true;
+    }
+    return !!el.closest(
+      '#SuiteNavWrapper, #O365_NavHeader, #sirva-sidenav-extension-root, .sirva-nav-root'
+    );
+  }
+
+  private clearOffsetStyles(el: HTMLElement): void {
+    el.style.removeProperty('left');
+    el.style.removeProperty('right');
+    el.style.removeProperty('width');
+    el.style.removeProperty('max-width');
+    el.style.removeProperty('margin-left');
+    el.style.removeProperty('padding-left');
+    el.style.removeProperty('overflow-x');
+  }
+
+  private offsetElement(el: HTMLElement, apply: boolean): void {
+    if (this.isSuiteChrome(el)) {
+      return;
+    }
+
+    if (!apply) {
+      this.clearOffsetStyles(el);
+      return;
+    }
+
+    const offset = this.getOffsetPx();
+    const position = window.getComputedStyle(el).position;
+    if (position === 'absolute' || position === 'fixed' || position === 'sticky') {
+      el.style.setProperty('left', offset, 'important');
+      el.style.setProperty('right', '0', 'important');
+      el.style.setProperty('width', `calc(100% - ${offset})`, 'important');
+      el.style.setProperty('max-width', `calc(100% - ${offset})`, 'important');
+      el.style.removeProperty('margin-left');
+    } else {
+      el.style.setProperty('margin-left', offset, 'important');
+      el.style.setProperty('width', `calc(100% - ${offset})`, 'important');
+      el.style.setProperty('max-width', `calc(100% - ${offset})`, 'important');
+    }
+    el.style.setProperty('overflow-x', 'auto', 'important');
+    el.style.setProperty('box-sizing', 'border-box', 'important');
+  }
+
+
+
+   private collectShiftTargets(): HTMLElement[] {
+    const directSelectors = [
+      '[data-automation-id="contentScrollRegion"]',
+      '#spPageCanvasContent',
+      '#workbenchPageContent',
+      '.SPCanvas',
+      '[data-automation-id="CanvasLayout"]'
+    ];
+
+    const targets: HTMLElement[] = [];
+    for (const sel of directSelectors) {
+      document.querySelectorAll(sel).forEach((node) => {
+        const el = node as HTMLElement;
+        if (el && !this.isSuiteChrome(el) && targets.indexOf(el) === -1) {
+          targets.push(el);
+        }
+      });
+    }
+
+    if (targets.length > 0) {
+      return targets;
+    }
+
+    // Fallback search if specific automation IDs are missing
+    const candidates: HTMLElement[] = [];
+    document.querySelectorAll('div, main, section').forEach((node: Element): void => {
+      const el = node as HTMLElement;
+      if (this.isSuiteChrome(el)) return;
+      const rect = el.getBoundingClientRect();
+      const cs = window.getComputedStyle(el);
+      const isPositioned = cs.position === 'fixed' || cs.position === 'absolute' || cs.position === 'sticky';
+      if (
+        isPositioned &&
+        rect.left < 60 &&
+        rect.width > window.innerWidth * 0.6 &&
+        rect.top >= 0 && rect.top < window.innerHeight
+      ) {
+        candidates.push(el);
+      }
+    });
+
+    return candidates.filter((el: HTMLElement): boolean => 
+      !candidates.some((other: HTMLElement): boolean => other !== el && other.contains(el))
+    );
+  }
+
+  private stopShiftGuard(): void {
+    if (this._shiftObserver) {
+      this._shiftObserver.disconnect();
+      this._shiftObserver = null;
+    }
+    if (this._shiftGuardTimer !== null) {
+      window.clearTimeout(this._shiftGuardTimer);
+      this._shiftGuardTimer = null;
+    }
+  }
+
+  private startShiftGuard(): void {
+    this.stopShiftGuard();
+    this._shiftObserver = new MutationObserver(() => {
+      if (this._enforcingShift) {
+        return;
+      }
+      if (this._shiftGuardTimer !== null) {
+        window.clearTimeout(this._shiftGuardTimer);
+      }
+      this._shiftGuardTimer = window.setTimeout(() => {
+        this.applyMainContentShift(true);
+      }, 80);
+    });
+    this._shiftObserver.observe(document.body, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class']
+    });
+  }
+
+  private clearShiftedElements(): void {
+    this._shiftedElements.forEach((el) => this.clearOffsetStyles(el));
+    this._shiftedElements = [];
   }
 
   private applyMainContentShift(apply: boolean): void {
     if (apply) {
       document.body.classList.add('sirva-has-rail');
+      document.documentElement.classList.add('sirva-has-rail');
+      if (!this._shiftObserver) {
+        this.startShiftGuard();
+      }
     } else {
       document.body.classList.remove('sirva-has-rail');
-      document.body.classList.remove('sirva-rail-collapsed');
+      document.documentElement.classList.remove('sirva-has-rail');
+      this.stopShiftGuard();
     }
+
+    const doShift = () => {
+      this.syncRailTop();
+      this._enforcingShift = true;
+
+      if (!apply) {
+        this.clearShiftedElements();
+        this._enforcingShift = false;
+        return;
+      }
+
+      const targets = this.collectShiftTargets();
+      this._shiftedElements.forEach((el) => {
+        if (targets.indexOf(el) === -1) {
+          this.clearOffsetStyles(el);
+        }
+      });
+      targets.forEach((el) => this.offsetElement(el, true));
+      this._shiftedElements = targets;
+      this._enforcingShift = false;
+    };
+
+    doShift();
+    setTimeout(doShift, 400);
+    setTimeout(doShift, 1000);
+    setTimeout(doShift, 2500);
   }
 }

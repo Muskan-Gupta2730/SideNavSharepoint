@@ -4,7 +4,7 @@
   "https": true,
   "serveConfigurations": {
     "default": {
-      "pageUrl": "https://iproats.sharepoint.com/sites/SirvaDev/SitePages/Home.aspx",
+      "pageUrl": "https://iproats.sharepoint.com/sites/SirvaDev",
       "customActions": {
         "16b85c69-936d-4fef-9542-3425774ecd4b": {
           "location": "ClientSideExtension.ApplicationCustomizer",
@@ -15,7 +15,7 @@
       }
     },
     "sideNavSharepoint": {
-      "pageUrl": "https://iproats.sharepoint.com/sites/SirvaDev/SitePages/Home.aspx",
+      "pageUrl": "https://iproats.sharepoint.com/sites/SirvaDev",
       "customActions": {
         "16b85c69-936d-4fef-9542-3425774ecd4b": {
           "location": "ClientSideExtension.ApplicationCustomizer",

@@ -29,20 +29,21 @@
       overflow-x: hidden;
     }
 
-    /* Top Bar */
+    /* Top Bar - only covers the left rail 220px, keeps SP native bar visible on right */
     .sirva-top-header {
       position: fixed;
       top: 0;
       left: 0;
-      right: 0;
-      height: var(--sirva-top-height);
+      width: 220px;
+      height: 56px;
       background: var(--sirva-bg-dark);
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
       z-index: 10001;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 24px 0 20px;
+      padding: 0 10px 0 14px;
     }
 
     /* Brand Logo */
@@ -53,46 +54,66 @@
       text-decoration: none;
       color: #ffffff;
       user-select: none;
+      overflow: hidden;
     }
     .sirva-brand-icon {
-      width: 28px;
-      height: 28px;
+      width: 34px;
+      height: 34px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
+    }
+    .sirva-brand-logo-img {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+      border-radius: 4px;
+      display: block;
     }
     .sirva-brand-text {
-      font-size: 21px;
-      letter-spacing: -0.02em;
-      line-height: 1;
-      display: flex;
-      align-items: baseline;
-    }
-    .sirva-brand-sirva {
-      font-weight: 300;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      line-height: 1.2;
       color: #ffffff;
-    }
-    .sirva-brand-life {
-      font-weight: 700;
-      color: #ffffff;
-      margin-left: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     /* Left Vertical Rail */
     .sirva-left-rail {
       position: fixed;
-      top: var(--sirva-top-height);
+      top: 56px;
       left: 0;
       bottom: 0;
-      width: var(--sirva-rail-width);
+      width: 220px;
       background: var(--sirva-bg-dark);
       z-index: 10000;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
-      padding-top: 18px;
-      padding-bottom: 20px;
       box-shadow: 2px 0 12px rgba(0, 0, 0, 0.18);
+      overflow: hidden;
+    }
+
+    /* Scrollable Nav Wrapper */
+    .sirva-nav-scroll {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 12px 0;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.18) transparent;
+    }
+    .sirva-nav-scroll::-webkit-scrollbar { width: 4px; }
+    .sirva-nav-scroll::-webkit-scrollbar-track { background: transparent; }
+    .sirva-nav-scroll::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.18);
+      border-radius: 2px;
+    }
+    .sirva-nav-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(255,255,255,0.32);
     }
 
     /* Navigation List */
@@ -237,10 +258,30 @@
       color: #94a3b8;
     }
 
+    /* Hide SharePoint native Discover / Publish toolbar items */
+    [data-automation-id="pageCommandBar"] [data-automation-id="discoverButton"],
+    [data-automation-id="pageCommandBar"] [data-automation-id="publishButton"],
+    .od-ShellSuite-commands [title="Discover"],
+    .od-ShellSuite-commands [title="Publish"],
+    [aria-label="Discover"],
+    [aria-label="Publish"] {
+      display: none !important;
+    }
+
+    /* Ensure SharePoint settings gear icon is always visible */
+    [data-automation-id="settingsButton"],
+    [data-automation-id="SiteSettingsButton"],
+    [aria-label="Settings"],
+    #O365_MainLink_Settings {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+
     /* Page Content Simulation */
     .page-content-wrapper {
-      margin-left: var(--sirva-rail-width);
-      padding-top: var(--sirva-top-height);
+      margin-left: 220px;
+      padding-top: 56px;
       min-height: 100vh;
       background: #f8fafc;
     }
@@ -256,76 +297,87 @@
 
   <!-- Top Bar -->
   <header class="sirva-top-header">
-    <a href="#" class="sirva-brand" title="Sirva Life">
+    <a href="#" class="sirva-brand" title="Global People Hub">
       <span class="sirva-brand-icon">
-        <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="20" cy="20" r="18" stroke="url(#swirlGradient1)" stroke-width="3.5" stroke-dasharray="75 35" stroke-linecap="round"/>
-          <circle cx="20" cy="20" r="12" stroke="url(#swirlGradient2)" stroke-width="3.5" stroke-dasharray="45 25" stroke-linecap="round"/>
-          <circle cx="20" cy="20" r="5.5" fill="#22d3ee"/>
-          <defs>
-            <linearGradient id="swirlGradient1" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#22d3ee"/>
-              <stop offset="50%" stop-color="#a855f7"/>
-              <stop offset="100%" stop-color="#ec4899"/>
-            </linearGradient>
-            <linearGradient id="swirlGradient2" x1="40" y1="40" x2="0" y2="0" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#06b6d4"/>
-              <stop offset="100%" stop-color="#d946ef"/>
-            </linearGradient>
-          </defs>
-        </svg>
+        <img class="sirva-brand-logo-img" src="logo.jpg" alt="Logo" onerror="this.style.display='none'" />
       </span>
-      <span class="sirva-brand-text">
-        <span class="sirva-brand-sirva">sirva</span><span class="sirva-brand-life">life</span>
-      </span>
+      <span class="sirva-brand-text">Global People Hub</span>
     </a>
   </header>
 
   <!-- Left Vertical Rail -->
   <aside class="sirva-left-rail" id="sirvaLeftRail" role="navigation" aria-label="Primary Navigation">
-    <ul class="sirva-nav-list" id="sirvaNavList">
-      <li class="sirva-nav-item is-active" data-item-id="home">
-        <a class="sirva-nav-link" href="#">
-          <span>Home</span>
-        </a>
-      </li>
-      <li class="sirva-nav-item" data-item-id="working-here">
-        <a class="sirva-nav-link" href="#">
-          <span>Working here</span>
-          <span class="sirva-chevron">&#x203A;</span>
-        </a>
-      </li>
-      <li class="sirva-nav-item is-flyout-open" data-item-id="pay-benefits">
-        <a class="sirva-nav-link" href="#">
-          <span>Pay & benefits</span>
-          <span class="sirva-chevron">&#x203A;</span>
-        </a>
-      </li>
-      <li class="sirva-nav-item" data-item-id="learning">
-        <a class="sirva-nav-link" href="#">
-          <span>Learning</span>
-          <span class="sirva-chevron">&#x203A;</span>
-        </a>
-      </li>
-      <li class="sirva-nav-item" data-item-id="countries">
-        <a class="sirva-nav-link" href="#">
-          <span>Countries</span>
-        </a>
-      </li>
-      <li class="sirva-nav-item" data-item-id="news">
-        <a class="sirva-nav-link" href="#">
-          <span>News</span>
-        </a>
-      </li>
-    </ul>
-
+    <div class="sirva-nav-scroll">
+      <ul class="sirva-nav-list" id="sirvaNavList">
+        <li class="sirva-nav-item is-active" data-item-id="home">
+          <a class="sirva-nav-link" href="#">
+            <span>Home</span>
+          </a>
+        </li>
+        <li class="sirva-nav-item" data-item-id="about">
+          <a class="sirva-nav-link" href="#">
+            <span>About</span>
+            <span class="sirva-chevron">&#x203A;</span>
+          </a>
+        </li>
+        <li class="sirva-nav-item is-flyout-open" data-item-id="life">
+          <a class="sirva-nav-link" href="#">
+            <span>Life@Sirva</span>
+            <span class="sirva-chevron">&#x203A;</span>
+          </a>
+        </li>
+        <li class="sirva-nav-item" data-item-id="country">
+          <a class="sirva-nav-link" href="#">
+            <span>Country</span>
+            <span class="sirva-chevron">&#x203A;</span>
+          </a>
+        </li>
+        <li class="sirva-nav-item" data-item-id="dept">
+          <a class="sirva-nav-link" href="#">
+            <span>Departments</span>
+            <span class="sirva-chevron">&#x203A;</span>
+          </a>
+        </li>
+        <li class="sirva-nav-item" data-item-id="comms">
+          <a class="sirva-nav-link" href="#">
+            <span>Communication</span>
+            <span class="sirva-chevron">&#x203A;</span>
+          </a>
+        </li>
+        <li class="sirva-nav-item" data-item-id="people">
+          <a class="sirva-nav-link" href="#">
+            <span>People</span>
+          </a>
+        </li>
+        <li class="sirva-nav-item" data-item-id="leaders">
+          <a class="sirva-nav-link" href="#">
+            <span>Leaders</span>
+          </a>
+        </li>
+        <li class="sirva-nav-item" data-item-id="learning">
+          <a class="sirva-nav-link" href="#">
+            <span>Learning</span>
+          </a>
+        </li>
+        <li class="sirva-nav-item" data-item-id="careers">
+          <a class="sirva-nav-link" href="#">
+            <span>Careers</span>
+          </a>
+        </li>
+        <li class="sirva-nav-item" data-item-id="news">
+          <a class="sirva-nav-link" href="#">
+            <span>News@Sirva</span>
+          </a>
+        </li>
+      </ul>
+    </div>
     <div class="sirva-rail-footer">
       <span>Global People Hub</span>
     </div>
   </aside>
 
   <!-- Mega Menu Flyout Panel (initially showing Pay & benefits like screenshot) -->
-  <div class="sirva-megamenu-panel is-visible" id="sirvaMegaMenuPanel">
+  <!-- <div class="sirva-megamenu-panel is-visible" id="sirvaMegaMenuPanel">
     <div class="sirva-megamenu-grid" id="sirvaMegaMenuGrid">
       <div class="sirva-megamenu-col">
         <h4 class="sirva-megamenu-heading">YOUR PAY</h4>
@@ -356,7 +408,7 @@
         </ul>
       </div>
     </div>
-  </div>
+  </div> -->
 
   <!-- Page Content Simulation -->
   <div class="page-content-wrapper">
@@ -374,7 +426,7 @@
   <script>
     // Navigation Data
     const NAV_DATA = {
-      'working-here': {
+      'about': {
         columns: [
           {
             header: 'OUR CULTURE',
