@@ -20,6 +20,13 @@ export class SideNavRenderer {
   private _shiftObserver: MutationObserver | null = null;
   private _shiftGuardTimer: number | null = null;
   private _enforcingShift: boolean = false;
+  private esc(value: string): string {
+  return (value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
   public constructor(options?: ISideNavOptions) {
     this._options = options || {};
@@ -531,12 +538,12 @@ private forceAlignContent(): void {
       const activeClass = item.isActive ? 'is-active' : '';
       const chevronHtml = item.hasChevron ? '<span class="sirva-chevron">&#x203A;</span>' : '';
       return `
-        <li class="sirva-nav-item ${activeClass}" data-item-id="${item.id}">
-          <a class="sirva-nav-link" href="${item.url || '#'}" role="button" aria-haspopup="${item.columns ? 'true' : 'false'}">
-            <span>${item.title}</span>
-            ${chevronHtml}
-          </a>
-        </li>
+       <li class="sirva-nav-item ${activeClass}" data-item-id="${this.esc(item.id)}">
+  <a class="sirva-nav-link" href="${this.esc(item.url || '#')}" role="button" aria-haspopup="${item.columns ? 'true' : 'false'}">
+    <span>${this.esc(item.title)}</span>
+    ${chevronHtml}
+  </a>
+</li>
       `;
     }).join('');
 

@@ -8,13 +8,12 @@ export interface IMegaMenuColumn {
   header: string;
   items: ISubMenuItem[];
 }
-
 export interface INavItem {
-  children: any;
-  icon: string;
   id: string;
   title: string;
   url?: string;
+  icon?: string;
+  children?: any;
   isActive?: boolean;
   hasChevron?: boolean;
   columns?: IMegaMenuColumn[];

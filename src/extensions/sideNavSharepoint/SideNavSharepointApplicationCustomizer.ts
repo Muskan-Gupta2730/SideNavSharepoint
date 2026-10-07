@@ -4,6 +4,7 @@ import { BaseApplicationCustomizer } from '@microsoft/sp-application-base';
 import * as strings from 'SideNavSharepointApplicationCustomizerStrings';
 import { SideNavRenderer } from './SideNavRenderer';
 import { INavItem } from './SideNavData';
+import { NavService } from './NavService';
 
 const LOG_SOURCE: string = 'SideNavSharepointApplicationCustomizer';
 const ROOT_ID: string = 'sirva-sidenav-extension-root';
@@ -11,16 +12,23 @@ const ROOT_ID: string = 'sirva-sidenav-extension-root';
 export interface ISideNavSharepointApplicationCustomizerProperties {
   siteTitle?: string;
   shiftMainContent?: boolean;
-  navItemsJson?: string;
+
 }
 
 export default class SideNavSharepointApplicationCustomizer
   extends BaseApplicationCustomizer<ISideNavSharepointApplicationCustomizerProperties> {
 
   private _renderer: SideNavRenderer | undefined;
+  private _navItems: INavItem[] | undefined;
 
-  public onInit(): Promise<void> {
+  public async onInit(): Promise<void> {
     Log.info(LOG_SOURCE, `Initialized ${strings.Title}`);
+
+    const service = new NavService(
+      this.context.spHttpClient,
+      this.context.pageContext.web.absoluteUrl
+    );
+    this._navItems = await service.getNavItems();
 
     if (this.context.application && this.context.application.navigatedEvent) {
       this.context.application.navigatedEvent.add(this, () => {
@@ -29,8 +37,6 @@ export default class SideNavSharepointApplicationCustomizer
     }
 
     this._renderNav();
-
-    return Promise.resolve();
   }
 
   private _renderNav(): void {
@@ -46,36 +52,17 @@ export default class SideNavSharepointApplicationCustomizer
       this._renderer = undefined;
     }
 
-    let parsedItems: INavItem[] | undefined = undefined;
-
-    if (this.properties.navItemsJson) {
-      try {
-        parsedItems = JSON.parse(this.properties.navItemsJson);
-      } catch {
-        Log.error(
-          LOG_SOURCE,
-          new Error('Failed to parse navItemsJson property')
-        );
-      }
-    }
-
     const staleRoot = document.getElementById(ROOT_ID);
-
     if (staleRoot && staleRoot.parentNode) {
       staleRoot.parentNode.removeChild(staleRoot);
     }
 
     const rootEl = document.createElement('div');
     rootEl.id = ROOT_ID;
-
-    if (document.body) {
-      document.body.prepend(rootEl);
-    } else {
-      document.documentElement.prepend(rootEl);
-    }
+    (document.body || document.documentElement).prepend(rootEl);
 
     this._renderer = new SideNavRenderer({
-      navItems: parsedItems,
+      navItems: this._navItems,          // <-- from the list now
       siteTitle: this.properties.siteTitle,
       shiftMainContent: this.properties.shiftMainContent !== false,
       logoUrl: `${this.context.pageContext.web.absoluteUrl}/SiteAssets/logo.jpg`
