@@ -1,6 +1,21 @@
 import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
 import { INavItem } from './SideNavData';
 
+interface ISideNavListItem {
+  Id: number;
+  Title: string;
+  Link?: {
+    Description?: string;
+    Url: string;
+  };
+  isActive?: string;
+  Position?: number;
+}
+
+interface ISideNavListResponse {
+  value: ISideNavListItem[];
+}
+
 export class NavService {
   constructor(
     private spHttpClient: SPHttpClient,
@@ -25,9 +40,9 @@ export class NavService {
         throw new Error(`${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data: ISideNavListResponse = await response.json();
 
-      return data.value.map((item: any): INavItem => ({
+      return data.value.map((item: ISideNavListItem): INavItem => ({
         id: `nav-${item.Id}`,
         title: item.Title,
         url: item.Link && item.Link.Url ? item.Link.Url : '#',

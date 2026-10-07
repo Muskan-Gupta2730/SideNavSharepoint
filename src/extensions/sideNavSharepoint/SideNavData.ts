@@ -13,7 +13,7 @@ export interface INavItem {
   title: string;
   url?: string;
   icon?: string;
-  children?: any;
+  children?: INavItem[];
   isActive?: boolean;
   hasChevron?: boolean;
   columns?: IMegaMenuColumn[];
