@@ -15,24 +15,25 @@ export class SideNavRenderer {
   private _activeFlyoutId: string | null = null;
   private _closeTimeout: number | null = null;
   private _isCollapsed: boolean = false;
-  private _shiftedElements: HTMLElement[] = [];
   private _onResize: (() => void) | null = null;
+  private _onKeyDown: ((e: KeyboardEvent) => void) | null = null;
+  private _onDocClick: ((e: MouseEvent) => void) | null = null;
   private _shiftObserver: MutationObserver | null = null;
   private _shiftGuardTimer: number | null = null;
-  private _enforcingShift: boolean = false;
-  private esc(value: string): string {
-  return (value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
   public constructor(options?: ISideNavOptions) {
     this._options = options || {};
-    this._navItems = this._options.navItems && this._options.navItems.length > 0 
-      ? this._options.navItems 
+    this._navItems = this._options.navItems && this._options.navItems.length > 0
+      ? this._options.navItems
       : DEFAULT_NAV_ITEMS;
+  }
+
+  private esc(value: string): string {
+    return (value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   public render(targetElement: HTMLElement): void {
@@ -40,9 +41,9 @@ export class SideNavRenderer {
     this.injectStyles();
     this.buildDom();
     this.attachEvents();
-     this.updateActiveFromUrl();
+    this.updateActiveFromUrl();
     this.syncRailTop();
-    this._onResize = () => this.syncRailTop();
+    this._onResize = (): void => this.syncRailTop();
     window.addEventListener('resize', this._onResize);
     if (this._options.shiftMainContent !== false) {
       this.applyMainContentShift(true);
@@ -51,7 +52,7 @@ export class SideNavRenderer {
 
   /** Call after SPA navigation to re-apply the content offset without rebuilding the nav DOM. */
   public refreshShift(): void {
-    this.updateActiveFromUrl(); 
+    this.updateActiveFromUrl();
     if (this._options.shiftMainContent !== false) {
       this.applyMainContentShift(true);
     }
@@ -94,6 +95,15 @@ export class SideNavRenderer {
       window.removeEventListener('resize', this._onResize);
       this._onResize = null;
     }
+    if (this._onKeyDown) {
+      document.removeEventListener('keydown', this._onKeyDown);
+      this._onKeyDown = null;
+    }
+    if (this._onDocClick) {
+      document.removeEventListener('click', this._onDocClick);
+      this._onDocClick = null;
+    }
+    this.clearCloseTimeout();
     this.applyMainContentShift(false);
     this.stopShiftGuard();
     const styleEl = document.getElementById('sirva-sidenav-custom-styles');
@@ -115,11 +125,10 @@ export class SideNavRenderer {
 
     style.textContent = `
       :root {
-       --sirva-gap: 12px;
-        --sirva-bg-dark:
-#150056;
-        --sirva-bg-dark-hover: #29155f;
-        --sirva-bg-dark-active: #2b1461;
+        --sirva-gap: 12px;
+        --sirva-bg-dark: #150056;
+        --sirva-bg-dark-hover: #150056;
+        --sirva-bg-dark-active: #150056;
         --sirva-rail-width: 240px;
         --sirva-top-height: 56px;
         --sirva-cyan: #22d3ee;
@@ -127,20 +136,19 @@ export class SideNavRenderer {
         --sirva-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       }
 
-    /* =========================================================
-         SharePoint Layout Integration & Absolute Content Fix
+      /* =========================================================
+         SharePoint Layout Integration
          ========================================================= */
-/* Reserve the rail's space with SharePoint's own left app bar */
-#sp-appBar {
-  display: block !important;
-  visibility: hidden !important;
-  width: calc(var(--sirva-offset, 240px) + var(--sirva-gap)) !important;
-  min-width: calc(var(--sirva-offset, 240px) + var(--sirva-gap)) !important;
-  flex: 0 0 calc(var(--sirva-offset, 240px) + var(--sirva-gap)) !important;
-  transition: width 0.22s cubic-bezier(0.2, 0, 0, 1),
-              min-width 0.22s cubic-bezier(0.2, 0, 0, 1),
-              flex-basis 0.22s cubic-bezier(0.2, 0, 0, 1);
-}
+      #sp-appBar {
+        display: block !important;
+        visibility: hidden !important;
+        width: calc(var(--sirva-offset, 240px) + var(--sirva-gap)) !important;
+        min-width: calc(var(--sirva-offset, 240px) + var(--sirva-gap)) !important;
+        flex: 0 0 calc(var(--sirva-offset, 240px) + var(--sirva-gap)) !important;
+        transition: width 0.22s cubic-bezier(0.2, 0, 0, 1),
+                    min-width 0.22s cubic-bezier(0.2, 0, 0, 1),
+                    flex-basis 0.22s cubic-bezier(0.2, 0, 0, 1);
+      }
       body.sirva-has-rail {
         --sirva-offset: var(--sirva-rail-width);
         overflow-x: auto !important;
@@ -152,26 +160,24 @@ export class SideNavRenderer {
         --sirva-offset: 60px;
       }
 
-body.sirva-has-rail [data-automation-id="pageCommandBar"],
-body.sirva-has-rail [data-automation-id="CanvasCommandBar"],
-body.sirva-has-rail div[class*="commandBarWrapper"],
-body.sirva-has-rail div[class*="canvasControl"],
-body.sirva-has-rail [data-automation-id="pageHeader"],
-body.sirva-has-rail #spPageCanvasContent,
-body.sirva-has-rail .SPCanvas,
-body.sirva-has-rail [data-automation-id="CanvasLayout"],
-body.sirva-has-rail .controlZone {
-  margin-left: 0 !important;
-  width: auto !important;
-  max-width: none !important;
-}
-  body.sirva-has-rail #spSiteHeader img[class*="logo" i],
-body.sirva-has-rail #spSiteHeader i[class*="logo" i],
-body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
-  display: none !important;
-}
-
- 
+      body.sirva-has-rail [data-automation-id="pageCommandBar"],
+      body.sirva-has-rail [data-automation-id="CanvasCommandBar"],
+      body.sirva-has-rail div[class*="commandBarWrapper"],
+      body.sirva-has-rail div[class*="canvasControl"],
+      body.sirva-has-rail [data-automation-id="pageHeader"],
+      body.sirva-has-rail #spPageCanvasContent,
+      body.sirva-has-rail .SPCanvas,
+      body.sirva-has-rail [data-automation-id="CanvasLayout"],
+      body.sirva-has-rail .controlZone {
+        margin-left: 0 !important;
+        width: auto !important;
+        max-width: none !important;
+      }
+      body.sirva-has-rail #spSiteHeader img[class*="logo" i],
+      body.sirva-has-rail #spSiteHeader i[class*="logo" i],
+      body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
+        display: none !important;
+      }
 
       /* Main Wrapper */
       .sirva-nav-root {
@@ -183,6 +189,7 @@ body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
         box-sizing: border-box;
       }
 
+      /* Top area of the rail (logo + hamburger) */
       .sirva-rail-brand {
         height: 56px;
         flex-shrink: 0;
@@ -192,43 +199,29 @@ body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
         padding: 0 10px 0 14px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       }
-
-      /* Brand Area */
       .sirva-brand {
         display: flex;
         align-items: center;
-        gap: 10px;
-        text-decoration: none;
-        color: #ffffff;
         user-select: none;
-        max-width: 260px;
       }
-.sirva-brand-icon {
-  width: auto;
-  height: 42px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.sirva-brand-logo-img {
-  height: 42px;
-  width: auto;
-  max-width: 170px;
-  object-fit: contain;
-  border-radius: 4px;
-  display: block;
-}
-      .sirva-brand-text {
-        font-size: 15px;
-        font-weight: 600;
-        letter-spacing: 0.01em;
-        line-height: 1.2;
-        color: #ffffff;
-        white-space: nowrap;
+      .sirva-brand-icon {
+        width: auto;
+        height: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .sirva-brand-logo-img {
+        height: 42px;
+        width: auto;
+        max-width: 140px;
+        object-fit: contain;
+        border-radius: 4px;
+        display: block;
       }
 
-      /* Top Bar Right Tools */
+      /* Top bar right tools */
       .sirva-top-tools {
         display: flex;
         align-items: center;
@@ -251,7 +244,7 @@ body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
         color: #ffffff;
       }
 
-      /* Left Vertical Rail — below the native blue suite bar, always on screen */
+      /* Left vertical rail */
       .sirva-left-rail {
         position: fixed;
         top: 48px;
@@ -271,23 +264,51 @@ body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
         transform: none !important;
       }
 
+      /* ===== Collapsed rail ===== */
       body.sirva-rail-collapsed .sirva-left-rail {
-        width: 60px;
-      }
-      body.sirva-rail-collapsed .sirva-brand-text,
-      body.sirva-rail-collapsed .sirva-nav-scroll,
-      body.sirva-rail-collapsed .sirva-rail-footer {
-        display: none !important;
+        width: 60px !important;
+        overflow: hidden !important;
       }
       body.sirva-rail-collapsed .sirva-rail-brand {
-        padding: 0;
-        justify-content: center;
+        width: 60px !important;
+        padding: 0 !important;
+        justify-content: center !important;
       }
-      body.sirva-rail-collapsed .sirva-brand {
+      body.sirva-rail-collapsed .sirva-brand,
+      body.sirva-rail-collapsed .sirva-brand-icon,
+      body.sirva-rail-collapsed .sirva-brand-logo-img,
+      body.sirva-rail-collapsed #sirvaBrandLogoFallback,
+      body.sirva-rail-collapsed .sirva-nav-scroll {
         display: none !important;
       }
+      body.sirva-rail-collapsed .sirva-top-tools {
+        display: flex !important;
+        width: 100%;
+        justify-content: center;
+      }
+      body.sirva-rail-collapsed .sirva-rail-toggle-btn {
+        display: flex !important;
+        color: #ffffff !important;
+      }
+        /* ===== Hide nav links completely when collapsed ===== */
+body.sirva-rail-collapsed #sirvaNavRoot .sirva-nav-scroll,
+body.sirva-rail-collapsed #sirvaNavRoot .sirva-nav-list,
+body.sirva-rail-collapsed #sirvaNavRoot .sirva-nav-item,
+body.sirva-rail-collapsed #sirvaNavRoot a.sirva-nav-link,
+#sirvaNavRoot .sirva-left-rail.is-collapsed .sirva-nav-scroll,
+#sirvaNavRoot .sirva-left-rail.is-collapsed .sirva-nav-list,
+#sirvaNavRoot .sirva-left-rail.is-collapsed .sirva-nav-item,
+#sirvaNavRoot .sirva-left-rail.is-collapsed a.sirva-nav-link {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
 
-      /* Scrollable Nav Wrapper */
+      /* Scrollable nav wrapper */
       .sirva-nav-scroll {
         flex: 1;
         overflow-y: auto;
@@ -310,7 +331,7 @@ body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
         background: rgba(255,255,255,0.32);
       }
 
-      /* Navigation Menu List */
+      /* Navigation list */
       .sirva-nav-list {
         list-style: none;
         margin: 0;
@@ -319,51 +340,28 @@ body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
         flex-direction: column;
         gap: 2px;
       }
-
-      /* Navigation Items */
       .sirva-nav-item {
         position: relative;
         margin: 0;
       }
-
       .sirva-nav-link {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 11px 22px 11px 22px;
-        color:white;
+        padding: 11px 22px;
+        color: #ffffff;
         text-decoration: none;
         font-size: 16px;
         font-weight: 450;
         letter-spacing: 0.01em;
         position: relative;
-        transition: all 0.18s ease;
+        transition: color 0.18s ease, border-color 0.18s ease;
         border-left: 3.5px solid transparent;
         cursor: pointer;
         user-select: none;
       }
 
-.sirva-nav-link:hover .sirva-chevron,
-.sirva-nav-item.is-flyout-open .sirva-chevron {
-  opacity: 1;
-  transform: translateX(2px);
-  color: #22d3ee;
-}
-
-      /* Active State (e.g. Home) */
-      .sirva-nav-item.is-active .sirva-nav-link {
-        color: #22d3ee;
-        border-left-color: var(--sirva-cyan);
-        font-weight: 500;
-      }
-
-      /* Selected / Flyout Open State */
-      .sirva-nav-item.is-flyout-open .sirva-nav-link {
-        background: var(--sirva-bg-dark-active);
-        color: #22d3ee;
-      }
-
-      /* Chevron Indicator */
+      /* Chevron */
       .sirva-chevron {
         font-size: 15px;
         line-height: 1;
@@ -377,7 +375,47 @@ body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
         transform: translateX(2px);
       }
 
-      /* Mega Menu Flyout Panel */
+      /* =========================================================
+         Link colours: hover = active look (works on every page)
+         ========================================================= */
+      #sirvaNavRoot a.sirva-nav-link,
+      #sirvaNavRoot a.sirva-nav-link:link,
+      #sirvaNavRoot a.sirva-nav-link:visited {
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
+        background: transparent !important;
+        text-decoration: none !important;
+        border-left: 3.5px solid transparent !important;
+        opacity: 1 !important;
+      }
+      #sirvaNavRoot a.sirva-nav-link span {
+        color: inherit !important;
+        -webkit-text-fill-color: inherit !important;
+        opacity: 1 !important;
+      }
+      #sirvaNavRoot a.sirva-nav-link:hover,
+      #sirvaNavRoot a.sirva-nav-link:focus,
+      #sirvaNavRoot a.sirva-nav-link:active,
+      #sirvaNavRoot .sirva-nav-item.is-active a.sirva-nav-link,
+      #sirvaNavRoot .sirva-nav-item.is-flyout-open a.sirva-nav-link {
+        color: #22d3ee !important;
+        -webkit-text-fill-color: #22d3ee !important;
+        background: transparent !important;
+        border-left-color: #22d3ee !important;
+        text-decoration: none !important;
+        outline: none !important;
+        opacity: 1 !important;
+      }
+      #sirvaNavRoot a.sirva-nav-link:hover span,
+      #sirvaNavRoot a.sirva-nav-link:focus span {
+        color: #22d3ee !important;
+        -webkit-text-fill-color: #22d3ee !important;
+      }
+      #sirvaNavRoot .sirva-chevron {
+        color: #22d3ee !important;
+      }
+
+      /* Mega menu flyout panel */
       .sirva-megamenu-panel {
         position: fixed;
         left: calc(var(--sirva-rail-width) + 16px);
@@ -395,7 +433,6 @@ body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
         transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
         border: 1px solid rgba(0, 0, 0, 0.05);
       }
-
       .sirva-megamenu-panel::before {
         content: "";
         position: absolute;
@@ -404,25 +441,20 @@ body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
         left: -14px;
         width: 16px;
       }
-
       .sirva-megamenu-panel.is-visible {
         display: block;
         opacity: 1;
         transform: translateY(0);
       }
-
-      /* Columns in Mega Menu */
       .sirva-megamenu-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(170px, 1fr));
         gap: 36px;
       }
-
       .sirva-megamenu-col {
         display: flex;
         flex-direction: column;
       }
-
       .sirva-megamenu-heading {
         font-size: 12px;
         font-weight: 700;
@@ -432,7 +464,6 @@ body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
         margin: 0 0 18px 0;
         user-select: none;
       }
-
       .sirva-megamenu-links {
         list-style: none;
         margin: 0;
@@ -441,7 +472,6 @@ body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
         flex-direction: column;
         gap: 13px;
       }
-
       .sirva-megamenu-link {
         color: #334155;
         text-decoration: none;
@@ -450,15 +480,9 @@ body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
         transition: color 0.15s ease, transform 0.15s ease;
         display: inline-block;
       }
-
       .sirva-megamenu-link:hover {
         color: #7c3aed;
         transform: translateX(3px);
-      }
-
-
-      .sirva-rail-footer {
-        display: none !important;
       }
 
       @media (max-width: 768px) {
@@ -473,52 +497,6 @@ body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
         }
       }
     `;
-
-
-
-  }
-
-private forceAlignContent(): void {
-    const applyFixes = () => {
-      const railWidth = document.body.classList.contains('sirva-rail-collapsed') ? '60px' : '240px';
-      
-      // SharePoint ke saare primary wrappers jinhe shift karna hai
-      const shiftSelectors = [
-        '[data-automation-id="contentScrollRegion"]',
-      
-        'div[class*="canvasZone"]',
-        'div[class*="controlZone"]'
-      ];
-
-      shiftSelectors.forEach(selector => {
-        document.querySelectorAll(selector).forEach(element => {
-          const el = element as HTMLElement;
-          el.style.setProperty('margin-left', railWidth, 'important');
-          el.style.setProperty('width', `calc(100% - ${railWidth})`, 'important');
-          el.style.setProperty('box-sizing', 'border-box', 'important');
-        });
-      });
-
-      // Saare inner canvas sections/zones ko center align karne ke liye
-      const centerSelectors = [
-        '.CanvasZone',
-        '[data-automation-id="CanvasZone"]',
-        'div[class*="CanvasZone"]'
-      ];
-
-      centerSelectors.forEach(selector => {
-        document.querySelectorAll(selector).forEach(element => {
-          const el = element as HTMLElement;
-          el.style.setProperty('max-width', '1100px', 'important');
-          el.style.setProperty('margin-left', 'auto', 'important');
-          el.style.setProperty('margin-right', 'auto', 'important');
-          el.style.setProperty('width', '100%', 'important');
-        });
-      });
-    };
-
-    setInterval(applyFixes, 400);
-    window.addEventListener('resize', applyFixes);
   }
 
   private buildDom(): void {
@@ -526,7 +504,10 @@ private forceAlignContent(): void {
       return;
     }
 
-    const logoPath = (typeof Img === 'string' ? Img : (Img as any)?.default || (Img as any)?.uri || '');
+    const imgModule = Img as unknown as string | { default?: string; uri?: string };
+    const logoPath: string = typeof imgModule === 'string'
+      ? imgModule
+      : (imgModule.default || imgModule.uri || '');
 
     const collapseIcon = `
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -540,12 +521,12 @@ private forceAlignContent(): void {
       const activeClass = item.isActive ? 'is-active' : '';
       const chevronHtml = item.hasChevron ? '<span class="sirva-chevron">&#x203A;</span>' : '';
       return `
-       <li class="sirva-nav-item ${activeClass}" data-item-id="${this.esc(item.id)}">
-  <a class="sirva-nav-link" href="${this.esc(item.url || '#')}" role="button" aria-haspopup="${item.columns ? 'true' : 'false'}">
-    <span>${this.esc(item.title)}</span>
-    ${chevronHtml}
-  </a>
-</li>
+        <li class="sirva-nav-item ${activeClass}" data-item-id="${this.esc(item.id)}">
+          <a class="sirva-nav-link" href="${this.esc(item.url || '#')}" role="button" aria-haspopup="${item.columns ? 'true' : 'false'}">
+            <span>${this.esc(item.title)}</span>
+            ${chevronHtml}
+          </a>
+        </li>
       `;
     }).join('');
 
@@ -553,19 +534,18 @@ private forceAlignContent(): void {
       <div class="sirva-nav-root" id="sirvaNavRoot">
         <aside class="sirva-left-rail" id="sirvaLeftRail" role="navigation" aria-label="Primary Navigation">
           <div class="sirva-rail-brand">
-     
+            <div class="sirva-brand">
               <span class="sirva-brand-icon">
                 ${logoPath
-                  ? `<img class="sirva-brand-logo-img" id="sirvaBrandLogo" src="${logoPath}" alt="Logo" />`
+                  ? `<img class="sirva-brand-logo-img" id="sirvaBrandLogo" src="${this.esc(logoPath)}" alt="Logo" />`
                   : ''}
-                <span id="sirvaBrandLogoFallback" style="display:${logoPath ? 'none' : 'flex'}; width:34px; height:34px; border-radius:8px; background:linear-gradient(135deg,#22d3ee,#a855f7); align-items:center; justify-content:center; flex-shrink:0;">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <span id="sirvaBrandLogoFallback" style="display:${logoPath ? 'none' : 'flex'}; width:42px; height:42px; border-radius:8px; background:linear-gradient(135deg,#22d3ee,#a855f7); align-items:center; justify-content:center; flex-shrink:0;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
                   </svg>
                 </span>
               </span>
-    
-            </a>
+            </div>
             <div class="sirva-top-tools">
               <button class="sirva-rail-toggle-btn" id="sirvaRailToggle" title="Toggle Navigation Rail" aria-label="Toggle Navigation Rail">
                 ${collapseIcon}
@@ -576,9 +556,6 @@ private forceAlignContent(): void {
             <ul class="sirva-nav-list">
               ${navItemsHtml}
             </ul>
-          </div>
-          <div class="sirva-rail-footer">
-            <span class="sirva-rail-footer-text">Global People Hub</span>
           </div>
         </aside>
 
@@ -593,15 +570,11 @@ private forceAlignContent(): void {
 
     const logoImg = this._container.querySelector('#sirvaBrandLogo') as HTMLImageElement | null;
     if (logoImg) {
-      if (!logoPath) {
+      logoImg.addEventListener('error', () => {
         logoImg.style.display = 'none';
-      } else {
-        logoImg.addEventListener('error', () => {
-          logoImg.style.display = 'none';
-          const fallback = this._container?.querySelector('#sirvaBrandLogoFallback') as HTMLElement | null;
-          if (fallback) { fallback.style.display = 'flex'; }
-        });
-      }
+        const fallback = this._container?.querySelector('#sirvaBrandLogoFallback') as HTMLElement | null;
+        if (fallback) { fallback.style.display = 'flex'; }
+      });
     }
   }
 
@@ -623,7 +596,7 @@ private forceAlignContent(): void {
 
     items.forEach((itemEl) => {
       const id = itemEl.getAttribute('data-item-id');
-      const itemData = this._navItems.find((n) => n.id === id);
+      const itemData = this._navItems.find((n) => `${n.id}` === id);
 
       itemEl.addEventListener('mouseenter', () => {
         this.clearCloseTimeout();
@@ -639,7 +612,6 @@ private forceAlignContent(): void {
       });
 
       itemEl.addEventListener('click', (e) => {
-      
         if (itemData && itemData.columns && itemData.columns.length > 0) {
           e.preventDefault();
           this.openFlyout(itemData, itemEl as HTMLElement, panel, grid);
@@ -651,19 +623,19 @@ private forceAlignContent(): void {
       panel.addEventListener('mouseenter', () => {
         this.clearCloseTimeout();
       });
-
       panel.addEventListener('mouseleave', () => {
         this.scheduleClose(panel);
       });
     }
 
-    document.addEventListener('keydown', (e: KeyboardEvent) => {
+    this._onKeyDown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
         this.closeFlyout(panel);
       }
-    });
+    };
+    document.addEventListener('keydown', this._onKeyDown);
 
-    document.addEventListener('click', (e: MouseEvent) => {
+    this._onDocClick = (e: MouseEvent): void => {
       const target = e.target as HTMLElement;
       if (panel && !panel.contains(target) && !this._container?.contains(target)) {
         this.closeFlyout(panel);
@@ -676,7 +648,8 @@ private forceAlignContent(): void {
         window.setTimeout(() => this.applyMainContentShift(true), 150);
         window.setTimeout(() => this.applyMainContentShift(true), 500);
       }
-    });
+    };
+    document.addEventListener('click', this._onDocClick);
   }
 
   private openFlyout(
@@ -699,8 +672,8 @@ private forceAlignContent(): void {
       const linksHtml = col.items.map((sub) => {
         return `
           <li>
-            <a href="${sub.url}" class="sirva-megamenu-link" ${sub.isExternal ? 'target="_blank" rel="noopener noreferrer"' : ''}>
-              ${sub.title}
+            <a href="${this.esc(sub.url)}" class="sirva-megamenu-link" ${sub.isExternal ? 'target="_blank" rel="noopener noreferrer"' : ''}>
+              ${this.esc(sub.title)}
             </a>
           </li>
         `;
@@ -708,7 +681,7 @@ private forceAlignContent(): void {
 
       return `
         <div class="sirva-megamenu-col">
-          <h4 class="sirva-megamenu-heading">${col.header}</h4>
+          <h4 class="sirva-megamenu-heading">${this.esc(col.header)}</h4>
           <ul class="sirva-megamenu-links">
             ${linksHtml}
           </ul>
@@ -749,21 +722,21 @@ private forceAlignContent(): void {
     }
   }
 
-  private toggleRailCollapse(): void {
-    this._isCollapsed = !this._isCollapsed;
-    const panel = this._container?.querySelector('#sirvaMegaMenuPanel') as HTMLElement | null;
-    this.closeFlyout(panel);
+private toggleRailCollapse(): void {
+  this._isCollapsed = !this._isCollapsed;
+  const panel = this._container?.querySelector('#sirvaMegaMenuPanel') as HTMLElement | null;
+  const rail = this._container?.querySelector('.sirva-left-rail') as HTMLElement | null;
+  this.closeFlyout(panel);
 
-    if (this._isCollapsed) {
-      document.body.classList.add('sirva-rail-collapsed');
-    } else {
-      document.body.classList.remove('sirva-rail-collapsed');
-    }
-
-    if (this._options.shiftMainContent !== false) {
-      this.applyMainContentShift(true);
-    }
+  document.body.classList.toggle('sirva-rail-collapsed', this._isCollapsed);
+  if (rail) {
+    rail.classList.toggle('is-collapsed', this._isCollapsed);
   }
+
+  if (this._options.shiftMainContent !== false) {
+    this.applyMainContentShift(true);
+  }
+}
 
   private syncRailTop(): void {
     const suite = document.querySelector(
@@ -784,42 +757,6 @@ private forceAlignContent(): void {
     }
   }
 
-  private getOffsetPx(): string {
-    return this._isCollapsed ? '60px' : '240px';
-  }
-
-  private isSuiteChrome(el: HTMLElement): boolean {
-    if (
-      el.id === 'SuiteNavWrapper' ||
-      el.id === 'O365_NavHeader' ||
-      el.id === 'O365_Header' ||
-      el.id === 'sirva-sidenav-extension-root' ||
-      el.id === 'sirvaNavRoot' ||
-      el.classList.contains('sirva-left-rail') ||
-      el.classList.contains('sirva-nav-root')
-    ) {
-      return true;
-    }
-    return !!el.closest(
-      '#SuiteNavWrapper, #O365_NavHeader, #sirva-sidenav-extension-root, .sirva-nav-root'
-    );
-  }
-
-  private clearOffsetStyles(el: HTMLElement): void {
-    el.style.removeProperty('left');
-    el.style.removeProperty('right');
-    el.style.removeProperty('width');
-    el.style.removeProperty('max-width');
-    el.style.removeProperty('margin-left');
-    el.style.removeProperty('padding-left');
-    el.style.removeProperty('overflow-x');
-  }
-
-
-
-
-
-
   private stopShiftGuard(): void {
     if (this._shiftObserver) {
       this._shiftObserver.disconnect();
@@ -831,16 +768,9 @@ private forceAlignContent(): void {
     }
   }
 
-
-
-  private clearShiftedElements(): void {
-    this._shiftedElements.forEach((el) => this.clearOffsetStyles(el));
-    this._shiftedElements = [];
+  private applyMainContentShift(apply: boolean): void {
+    document.body.classList.toggle('sirva-has-rail', apply);
+    document.documentElement.classList.toggle('sirva-has-rail', apply);
+    this.syncRailTop();
   }
-
-private applyMainContentShift(apply: boolean): void {
-  document.body.classList.toggle('sirva-has-rail', apply);
-  document.documentElement.classList.toggle('sirva-has-rail', apply);
-  this.syncRailTop();
-}
 }
