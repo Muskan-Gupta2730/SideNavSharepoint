@@ -122,7 +122,7 @@ export class SideNavRenderer {
         --sirva-bg-dark-active: #2b1461;
         --sirva-rail-width: 240px;
         --sirva-top-height: 56px;
-        --sirva-cyan: white;
+        --sirva-cyan: #22d3ee;
         --sirva-purple-text: #a855f7;
         --sirva-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       }
@@ -331,7 +331,7 @@ body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
         align-items: center;
         justify-content: space-between;
         padding: 11px 22px 11px 22px;
-        color: white;
+        color:white;
         text-decoration: none;
         font-size: 16px;
         font-weight: 450;
@@ -343,15 +343,16 @@ body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
         user-select: none;
       }
 
-      .sirva-nav-link:hover,
-      .sirva-nav-item.is-hovered .sirva-nav-link {
-        background: var(--sirva-bg-dark-hover);
-        color: #ffffff;
-      }
+.sirva-nav-link:hover .sirva-chevron,
+.sirva-nav-item.is-flyout-open .sirva-chevron {
+  opacity: 1;
+  transform: translateX(2px);
+  color: #22d3ee;
+}
 
       /* Active State (e.g. Home) */
       .sirva-nav-item.is-active .sirva-nav-link {
-        color: var(--sirva-cyan);
+        color: #22d3ee;
         border-left-color: var(--sirva-cyan);
         font-weight: 500;
       }
@@ -359,7 +360,7 @@ body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
       /* Selected / Flyout Open State */
       .sirva-nav-item.is-flyout-open .sirva-nav-link {
         background: var(--sirva-bg-dark-active);
-        color: #ffffff;
+        color: #22d3ee;
       }
 
       /* Chevron Indicator */
