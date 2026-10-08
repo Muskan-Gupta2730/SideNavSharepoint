@@ -65,7 +65,7 @@ export default class SideNavSharepointApplicationCustomizer
       navItems: this._navItems,          // <-- from the list now
       siteTitle: this.properties.siteTitle,
       shiftMainContent: this.properties.shiftMainContent !== false,
-      logoUrl: `${this.context.pageContext.web.absoluteUrl}/SiteAssets/logo.jpg`
+      logoUrl: `${this.context.pageContext.web.absoluteUrl}/SiteAssets/logo.png`
     });
 
     this._renderer.render(rootEl);

@@ -1,5 +1,5 @@
 import { INavItem, DEFAULT_NAV_ITEMS } from './SideNavData';
-import Img from "../../img/logo.jpg";
+import Img from "../../img/logo.png";
 
 export interface ISideNavOptions {
   navItems?: INavItem[];
@@ -203,21 +203,22 @@ body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
         user-select: none;
         max-width: 260px;
       }
-      .sirva-brand-icon {
-        width: 34px;
-        height: 34px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-      }
-      .sirva-brand-logo-img {
-        width: 34px;
-        height: 34px;
-        object-fit: contain;
-        border-radius: 4px;
-        display: block;
-      }
+.sirva-brand-icon {
+  width: auto;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.sirva-brand-logo-img {
+  height: 42px;
+  width: auto;
+  max-width: 170px;
+  object-fit: contain;
+  border-radius: 4px;
+  display: block;
+}
       .sirva-brand-text {
         font-size: 15px;
         font-weight: 600;
@@ -551,7 +552,7 @@ private forceAlignContent(): void {
       <div class="sirva-nav-root" id="sirvaNavRoot">
         <aside class="sirva-left-rail" id="sirvaLeftRail" role="navigation" aria-label="Primary Navigation">
           <div class="sirva-rail-brand">
-            <a href="#" class="sirva-brand" title="Global People Hub">
+     
               <span class="sirva-brand-icon">
                 ${logoPath
                   ? `<img class="sirva-brand-logo-img" id="sirvaBrandLogo" src="${logoPath}" alt="Logo" />`
@@ -562,7 +563,7 @@ private forceAlignContent(): void {
                   </svg>
                 </span>
               </span>
-              <span class="sirva-brand-text">Global People Hub</span>
+    
             </a>
             <div class="sirva-top-tools">
               <button class="sirva-rail-toggle-btn" id="sirvaRailToggle" title="Toggle Navigation Rail" aria-label="Toggle Navigation Rail">
