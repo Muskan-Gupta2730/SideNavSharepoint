@@ -60,12 +60,22 @@ public render(targetElement: HTMLElement): void {
     return;
   }
 
-  this._container = targetElement;
 
-  this.buildDom();
-  this.attachEvents();
-  this.updateActiveFromUrl();
-  this.syncRailTop();
+this._container = targetElement;
+// Set mobile state before rendering the sidebar
+if (this.isCompactView()) {
+  this._isCollapsed = true;
+  document.body.classList.add('sirva-rail-collapsed');
+} else {
+  this._isCollapsed = false;
+  document.body.classList.remove('sirva-rail-collapsed');
+}
+
+
+this.buildDom();
+this.attachEvents();
+this.updateActiveFromUrl();
+this.syncRailTop();
   this._onResize = (): void => this.syncRailTop();
   window.addEventListener('resize', this._onResize);
 
@@ -86,15 +96,34 @@ public render(targetElement: HTMLElement): void {
   
 
   /** Call after SPA navigation to re-apply the content offset without rebuilding the nav DOM. */
-  public refreshShift(): void {
-      if (this.isCompactView()) {
-    this.collapseRail();
-  }
-    this.updateActiveFromUrl();
-    if (this._options.shiftMainContent !== false) {
-      this.applyMainContentShift(true);
+
+public refreshShift(): void {
+  if (this.isCompactView()) {
+    this._isCollapsed = true;
+
+    document.body.classList.add('sirva-rail-collapsed');
+
+    const rail = this._container?.querySelector(
+      '.sirva-left-rail'
+    ) as HTMLElement | null;
+
+    if (rail) {
+      rail.classList.add('is-collapsed');
     }
+
+    const panel = this._container?.querySelector(
+      '#sirvaMegaMenuPanel'
+    ) as HTMLElement | null;
+
+    this.closeFlyout(panel);
   }
+
+  this.updateActiveFromUrl();
+
+  if (this._options.shiftMainContent !== false) {
+    this.applyMainContentShift(true);
+  }
+}
 
   private updateActiveFromUrl(): void {
     if (!this._container) {
@@ -259,25 +288,51 @@ private collapseRail(): void {
     const items = this._container.querySelectorAll('.sirva-nav-item');
     const toggleBtn = this._container.querySelector('#sirvaRailToggle') as HTMLButtonElement | null;
 
-    this._container.addEventListener('click', (e) => {
+
+this._container.addEventListener('click', (e) => {
   if (!this.isCompactView()) {
     return;
   }
+
   const link = (e.target as HTMLElement).closest(
     'a.sirva-nav-link, a.sirva-megamenu-link'
   ) as HTMLAnchorElement | null;
+
   if (!link) {
     return;
   }
+
   const href = link.getAttribute('href');
+
   if (!href || href === '#') {
     return;
   }
-  // Jis item mein mega menu hai, uspar tap karne se sirf menu khulna chahiye
-  if (link.classList.contains('sirva-nav-link') && link.getAttribute('aria-haspopup') === 'true') {
+
+  // Keep mega-menu parent links clickable for opening submenus
+  if (
+    link.classList.contains('sirva-nav-link') &&
+    link.getAttribute('aria-haspopup') === 'true'
+  ) {
     return;
   }
-  this.collapseRail();
+
+  // Close immediately when another navigation link is tapped
+  this._isCollapsed = true;
+  document.body.classList.add('sirva-rail-collapsed');
+
+  const rail = this._container?.querySelector(
+    '.sirva-left-rail'
+  ) as HTMLElement | null;
+
+  if (rail) {
+    rail.classList.add('is-collapsed');
+  }
+
+  const panel = this._container?.querySelector(
+    '#sirvaMegaMenuPanel'
+  ) as HTMLElement | null;
+
+  this.closeFlyout(panel);
 });
     if (toggleBtn) {
       toggleBtn.addEventListener('click', () => {
@@ -399,12 +454,14 @@ private collapseRail(): void {
     this._activeFlyoutId = null;
   }
 
-  private scheduleClose(panel: HTMLElement | null): void {
-    this.clearCloseTimeout();
-    this._closeTimeout = window.setTimeout(() => {
-      this.closeFlyout(panel);
-    }, 180);
-  }
+
+private scheduleClose(panel: HTMLElement | null): void {
+  this.clearCloseTimeout();
+
+  this._closeTimeout = window.setTimeout(() => {
+    this.closeFlyout(panel);
+  }, 350);
+}
 
   private clearCloseTimeout(): void {
     if (this._closeTimeout !== null) {
