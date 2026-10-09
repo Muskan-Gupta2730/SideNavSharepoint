@@ -27,6 +27,23 @@ export class SideNavRenderer {
       ? this._options.navItems
       : DEFAULT_NAV_ITEMS;
   }
+private shouldSkipRender(): boolean {
+  // Popup / dialog / iframe ke andar nav mat dikhao
+  try {
+    if (window.self !== window.top) {
+      return true;
+    }
+  } catch {
+    return true;
+  }
+
+  const query = window.location.search.toLowerCase();
+  if (query.indexOf('isdlg=1') > -1) {
+    return true;
+  }
+
+  return false;
+}
 
   private esc(value: string): string {
     return (value || '')
@@ -48,7 +65,11 @@ export class SideNavRenderer {
     if (this._options.shiftMainContent !== false) {
       this.applyMainContentShift(true);
     }
+    if (this.shouldSkipRender()) {
+  return;
+}
   }
+  
 
   /** Call after SPA navigation to re-apply the content offset without rebuilding the nav DOM. */
   public refreshShift(): void {
