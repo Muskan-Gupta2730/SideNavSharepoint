@@ -131,9 +131,10 @@ export class SideNavRenderer {
         --sirva-bg-dark-active: #150056;
         --sirva-rail-width: 240px;
         --sirva-top-height: 56px;
-        --sirva-cyan: #22d3ee;
-        --sirva-purple-text: #a855f7;
-        --sirva-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        --sirva-cyan: #6FF0EE;
+        --sirva-purple-text: #AE42F4 ;
+       --sirva-light-blue: #6FF0EE;
+--sirva-font: "Segoe UI Web (West European)", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
       }
 
       /* =========================================================
@@ -398,21 +399,21 @@ body.sirva-rail-collapsed #sirvaNavRoot a.sirva-nav-link,
       #sirvaNavRoot a.sirva-nav-link:active,
       #sirvaNavRoot .sirva-nav-item.is-active a.sirva-nav-link,
       #sirvaNavRoot .sirva-nav-item.is-flyout-open a.sirva-nav-link {
-        color: #22d3ee !important;
-        -webkit-text-fill-color: #22d3ee !important;
+        color: var(--sirva-light-blue) !important;
+        -webkit-text-fill-color: var(--sirva-light-blue) !important;
         background: transparent !important;
-        border-left-color: #22d3ee !important;
+        border-left-color: var(--sirva-light-blue) !important;
         text-decoration: none !important;
         outline: none !important;
         opacity: 1 !important;
       }
       #sirvaNavRoot a.sirva-nav-link:hover span,
       #sirvaNavRoot a.sirva-nav-link:focus span {
-        color: #22d3ee !important;
-        -webkit-text-fill-color: #22d3ee !important;
+        color: var(--sirva-light-blue) !important;
+        -webkit-text-fill-color: var(--sirva-light-blue) !important;
       }
       #sirvaNavRoot .sirva-chevron {
-        color: #22d3ee !important;
+        color: var(--sirva-light-blue) !important;
       }
 
       /* Mega menu flyout panel */
@@ -421,8 +422,8 @@ body.sirva-rail-collapsed #sirvaNavRoot a.sirva-nav-link,
         left: calc(var(--sirva-rail-width) + 16px);
         top: calc(var(--sirva-top-height) + 14px);
         background: #ffffff;
-        border-radius: 10px;
-        box-shadow: 0 18px 45px -4px rgba(18, 9, 60, 0.22), 0 6px 18px -2px rgba(18, 9, 60, 0.1);
+        border-radius: 8px;
+        box-shadow: 0 12px 28px rgba(21,0,86,.16); 
         padding: 30px 42px 34px 42px;
         z-index: 10010;
         min-width: 580px;
@@ -431,7 +432,7 @@ body.sirva-rail-collapsed #sirvaNavRoot a.sirva-nav-link,
         opacity: 0;
         transform: translateY(4px);
         transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-        border: 1px solid rgba(0, 0, 0, 0.05);
+        border: 1px solid #E7E6E5;
       }
       .sirva-megamenu-panel::before {
         content: "";
@@ -460,7 +461,7 @@ body.sirva-rail-collapsed #sirvaNavRoot a.sirva-nav-link,
         font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: var(--sirva-purple-text);
+       color: #9631DE;
         margin: 0 0 18px 0;
         user-select: none;
       }
@@ -473,7 +474,7 @@ body.sirva-rail-collapsed #sirvaNavRoot a.sirva-nav-link,
         gap: 13px;
       }
       .sirva-megamenu-link {
-        color: #334155;
+        color: #4D4B49;
         text-decoration: none;
         font-size: 14px;
         line-height: 1.4;
@@ -481,7 +482,7 @@ body.sirva-rail-collapsed #sirvaNavRoot a.sirva-nav-link,
         display: inline-block;
       }
       .sirva-megamenu-link:hover {
-        color: #7c3aed;
+        color: #7B1FC0;
         transform: translateX(3px);
       }
 
@@ -539,7 +540,7 @@ body.sirva-rail-collapsed #sirvaNavRoot a.sirva-nav-link,
                 ${logoPath
                   ? `<img class="sirva-brand-logo-img" id="sirvaBrandLogo" src="${this.esc(logoPath)}" alt="Logo" />`
                   : ''}
-                <span id="sirvaBrandLogoFallback" style="display:${logoPath ? 'none' : 'flex'}; width:42px; height:42px; border-radius:8px; background:linear-gradient(135deg,#22d3ee,#a855f7); align-items:center; justify-content:center; flex-shrink:0;">
+                <span id="sirvaBrandLogoFallback" style="display:${logoPath ? 'none' : 'flex'}; width:42px; height:42px; border-radius:8px; background:linear-gradient(135deg,var(--sirva-light-blue),#a855f7); align-items:center; justify-content:center; flex-shrink:0;">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
                   </svg>
