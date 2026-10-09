@@ -12,7 +12,6 @@ const ROOT_ID: string = 'sirva-sidenav-extension-root';
 export interface ISideNavSharepointApplicationCustomizerProperties {
   siteTitle?: string;
   shiftMainContent?: boolean;
-
 }
 
 export default class SideNavSharepointApplicationCustomizer
@@ -20,24 +19,24 @@ export default class SideNavSharepointApplicationCustomizer
 
   private _renderer: SideNavRenderer | undefined;
   private _navItems: INavItem[] | undefined;
+
   private _isInsideDialog(): boolean {
-  try {
-    if (window.self !== window.top) {
-      return true;
+    try {
+      if (window.self !== window.top) {
+        return true;
+      }
+    } catch {
+      return true; // cross-origin iframe
     }
-  } catch {
-    return true; // cross-origin iframe
+    return window.location.search.toLowerCase().indexOf('isdlg=1') > -1;
   }
-  return window.location.search.toLowerCase().indexOf('isdlg=1') > -1;
-}
 
   public async onInit(): Promise<void> {
     // Popup / dialog / iframe mein kuch bhi load mat karo
-  if (this._isInsideDialog()) {
-    return;
-  }
+    if (this._isInsideDialog()) {
+      return;
+    }
 
-  Log.info(LOG_SOURCE, `Initialized ${strings.Title}`);
     Log.info(LOG_SOURCE, `Initialized ${strings.Title}`);
 
     const service = new NavService(
@@ -78,7 +77,7 @@ export default class SideNavSharepointApplicationCustomizer
     (document.body || document.documentElement).prepend(rootEl);
 
     this._renderer = new SideNavRenderer({
-      navItems: this._navItems,          // <-- from the list now
+      navItems: this._navItems,
       siteTitle: this.properties.siteTitle,
       shiftMainContent: this.properties.shiftMainContent !== false,
       logoUrl: `${this.context.pageContext.web.absoluteUrl}/SiteAssets/logo.png`

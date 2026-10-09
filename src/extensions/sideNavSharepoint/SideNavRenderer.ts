@@ -29,7 +29,7 @@ export class SideNavRenderer {
   }
 private shouldSkipRender(): boolean {
   // Popup / dialog / iframe ke andar nav mat dikhao
-  console.log('SideNav guard running, in iframe:', window.self !== window.top);
+ 
   try {
     if (window.self !== window.top) {
       return true;
@@ -55,6 +55,10 @@ private shouldSkipRender(): boolean {
   }
 
   public render(targetElement: HTMLElement): void {
+    if (this.shouldSkipRender()) {
+      return;
+    }
+
     this._container = targetElement;
     this.injectStyles();
     this.buildDom();
@@ -66,9 +70,6 @@ private shouldSkipRender(): boolean {
     if (this._options.shiftMainContent !== false) {
       this.applyMainContentShift(true);
     }
-    if (this.shouldSkipRender()) {
-  return;
-}
   }
   
 
