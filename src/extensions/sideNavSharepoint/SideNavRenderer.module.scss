@@ -278,27 +278,25 @@ body.sirva-rail-collapsed #sirvaNavRoot a.sirva-nav-link,
         -webkit-text-fill-color: inherit !important;
         opacity: 1 !important;
       }
-      #sirvaNavRoot a.sirva-nav-link:hover,
-      #sirvaNavRoot a.sirva-nav-link:focus,
-      #sirvaNavRoot a.sirva-nav-link:active,
-      #sirvaNavRoot .sirva-nav-item.is-active a.sirva-nav-link,
-      #sirvaNavRoot .sirva-nav-item.is-flyout-open a.sirva-nav-link {
-        color: var(--sirva-light-blue) !important;
-        -webkit-text-fill-color: var(--sirva-light-blue) !important;
-        background: transparent !important;
-        border-left-color: var(--sirva-light-blue) !important;
-        text-decoration: none !important;
-        outline: none !important;
-        opacity: 1 !important;
-      }
-      #sirvaNavRoot a.sirva-nav-link:hover span,
-      #sirvaNavRoot a.sirva-nav-link:focus span {
-        color: var(--sirva-light-blue) !important;
-        -webkit-text-fill-color: var(--sirva-light-blue) !important;
-      }
-      #sirvaNavRoot .sirva-chevron {
-        color: var(--sirva-light-blue) !important;
-      }
+
+#sirvaNavRoot a.sirva-nav-link:hover,
+#sirvaNavRoot a.sirva-nav-link:focus {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  background: rgba(111, 240, 238, 0.10) !important;
+  border-left-color: transparent !important;
+}
+
+/* Clicked/active link: cyan text and left border */
+#sirvaNavRoot .sirva-nav-item.is-active a.sirva-nav-link,
+#sirvaNavRoot .sirva-nav-item.is-flyout-open a.sirva-nav-link {
+  color: var(--sirva-light-blue) !important;
+  -webkit-text-fill-color: var(--sirva-light-blue) !important;
+  background: rgba(111, 240, 238, 0.10) !important;
+  border-left-color: var(--sirva-light-blue) !important;
+}
+
+
 
       /* Mega menu flyout panel */
       .sirva-megamenu-panel {
