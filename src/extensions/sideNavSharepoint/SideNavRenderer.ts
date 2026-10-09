@@ -54,27 +54,41 @@ private shouldSkipRender(): boolean {
       .replace(/"/g, '&quot;');
   }
 
-  public render(targetElement: HTMLElement): void {
-    if (this.shouldSkipRender()) {
-      return;
-    }
+public render(targetElement: HTMLElement): void {
+  if (this.shouldSkipRender()) {
+    return;
+  }
 
-    this._container = targetElement;
-    this.injectStyles();
-    this.buildDom();
-    this.attachEvents();
-    this.updateActiveFromUrl();
-    this.syncRailTop();
-    this._onResize = (): void => this.syncRailTop();
-    window.addEventListener('resize', this._onResize);
-    if (this._options.shiftMainContent !== false) {
-      this.applyMainContentShift(true);
+  this._container = targetElement;
+  this.injectStyles();
+  this.buildDom();
+  this.attachEvents();
+  this.updateActiveFromUrl();
+  this.syncRailTop();
+  this._onResize = (): void => this.syncRailTop();
+  window.addEventListener('resize', this._onResize);
+
+  // Phone par rail by default collapsed rakho
+  if (this.isCompactView()) {
+    this._isCollapsed = true;
+    document.body.classList.add('sirva-rail-collapsed');
+    const rail = this._container.querySelector('.sirva-left-rail');
+    if (rail) {
+      rail.classList.add('is-collapsed');
     }
   }
+
+  if (this._options.shiftMainContent !== false) {
+    this.applyMainContentShift(true);
+  }
+}
   
 
   /** Call after SPA navigation to re-apply the content offset without rebuilding the nav DOM. */
   public refreshShift(): void {
+      if (this.isCompactView()) {
+    this.collapseRail();
+  }
     this.updateActiveFromUrl();
     if (this._options.shiftMainContent !== false) {
       this.applyMainContentShift(true);
@@ -109,6 +123,16 @@ private shouldSkipRender(): boolean {
       el.classList.toggle('is-active', el.getAttribute('data-item-id') === activeId);
     });
   }
+
+  private isCompactView(): boolean {
+  return window.innerWidth <= 1024;
+}
+
+private collapseRail(): void {
+  if (!this._isCollapsed) {
+    this.toggleRailCollapse();
+  }
+}
 
   public dispose(): void {
     this._isCollapsed = false;
@@ -202,6 +226,12 @@ private shouldSkipRender(): boolean {
       body.sirva-has-rail #spSiteHeader [class*="logo" i] > img {
         display: none !important;
       }
+        body.sirva-has-rail button[aria-label="Toggle navigation pane"],
+body.sirva-has-rail button[title="Toggle navigation pane"],
+body.sirva-has-rail button[data-automation-id="HamburgerToggle"],
+body.sirva-has-rail [data-automation-id="nav-toggle"] {
+  display: none !important;
+}
 
       /* Main Wrapper */
       .sirva-nav-root {
@@ -508,18 +538,58 @@ body.sirva-rail-collapsed #sirvaNavRoot a.sirva-nav-link,
         color: #7B1FC0;
         transform: translateX(3px);
       }
+@media (max-width: 1024px) {
+  /* Page ko bilkul shift mat karo */
+  body.sirva-has-rail {
+    --sirva-offset: 0px;
+  }
+  #sp-appBar {
+    width: 0 !important;
+    min-width: 0 !important;
+    flex: 0 0 0 !important;
+  }
 
-      @media (max-width: 768px) {
-        .sirva-megamenu-panel {
-          min-width: 90vw;
-          left: 10px;
-          top: calc(var(--sirva-top-height) + 10px);
-        }
-        .sirva-megamenu-grid {
-          grid-template-columns: 1fr;
-          gap: 20px;
-        }
-      }
+  /* BAND state: sirf chhota hamburger button */
+  body.sirva-rail-collapsed .sirva-left-rail {
+    left: 8px !important;
+    margin-top: 8px;
+    width: 44px !important;
+    height: 44px !important;
+    bottom: auto !important;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(21, 0, 86, 0.35);
+  }
+  body.sirva-rail-collapsed .sirva-rail-brand {
+    width: 44px !important;
+    height: 44px !important;
+    padding: 0 !important;
+    border-bottom: none !important;
+    justify-content: center !important;
+  }
+
+  /* KHULA state: content ke upar overlay */
+  .sirva-left-rail {
+    width: 260px;
+    max-width: 85vw;
+    box-shadow: 4px 0 24px rgba(21, 0, 86, 0.35);
+  }
+
+  /* Mega menu */
+  .sirva-megamenu-panel {
+    min-width: 0;
+    max-width: none;
+    left: 10px;
+    right: 10px;
+    width: auto;
+    padding: 20px;
+  }
+  .sirva-megamenu-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+}
     `;
   }
 
@@ -612,6 +682,26 @@ body.sirva-rail-collapsed #sirvaNavRoot a.sirva-nav-link,
     const items = this._container.querySelectorAll('.sirva-nav-item');
     const toggleBtn = this._container.querySelector('#sirvaRailToggle') as HTMLButtonElement | null;
 
+    this._container.addEventListener('click', (e) => {
+  if (!this.isCompactView()) {
+    return;
+  }
+  const link = (e.target as HTMLElement).closest(
+    'a.sirva-nav-link, a.sirva-megamenu-link'
+  ) as HTMLAnchorElement | null;
+  if (!link) {
+    return;
+  }
+  const href = link.getAttribute('href');
+  if (!href || href === '#') {
+    return;
+  }
+  // Jis item mein mega menu hai, uspar tap karne se sirf menu khulna chahiye
+  if (link.classList.contains('sirva-nav-link') && link.getAttribute('aria-haspopup') === 'true') {
+    return;
+  }
+  this.collapseRail();
+});
     if (toggleBtn) {
       toggleBtn.addEventListener('click', () => {
         this.toggleRailCollapse();
