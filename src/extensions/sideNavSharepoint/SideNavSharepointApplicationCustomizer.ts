@@ -20,8 +20,24 @@ export default class SideNavSharepointApplicationCustomizer
 
   private _renderer: SideNavRenderer | undefined;
   private _navItems: INavItem[] | undefined;
+  private _isInsideDialog(): boolean {
+  try {
+    if (window.self !== window.top) {
+      return true;
+    }
+  } catch {
+    return true; // cross-origin iframe
+  }
+  return window.location.search.toLowerCase().indexOf('isdlg=1') > -1;
+}
 
   public async onInit(): Promise<void> {
+    // Popup / dialog / iframe mein kuch bhi load mat karo
+  if (this._isInsideDialog()) {
+    return;
+  }
+
+  Log.info(LOG_SOURCE, `Initialized ${strings.Title}`);
     Log.info(LOG_SOURCE, `Initialized ${strings.Title}`);
 
     const service = new NavService(

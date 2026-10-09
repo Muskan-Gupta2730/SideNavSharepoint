@@ -29,6 +29,7 @@ export class SideNavRenderer {
   }
 private shouldSkipRender(): boolean {
   // Popup / dialog / iframe ke andar nav mat dikhao
+  console.log('SideNav guard running, in iframe:', window.self !== window.top);
   try {
     if (window.self !== window.top) {
       return true;
