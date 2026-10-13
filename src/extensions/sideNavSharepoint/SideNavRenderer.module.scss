@@ -4,7 +4,7 @@
 
       :root {
         --sirva-gap: 12px;
-        --sirva-bg-dark: #150056;
+        --sirva-bg-dark: #120052;
         --sirva-bg-dark-hover: #150056;
         --sirva-bg-dark-active: #150056;
         --sirva-rail-width: 240px;
@@ -98,8 +98,8 @@ body.sirva-has-rail [data-automation-id="nav-toggle"] {
         flex-shrink: 0;
       }
       .sirva-brand-logo-img {
-        height: 42px;
-        width: auto;
+        height: 38px;
+        width: 100px;
         max-width: 140px;
         object-fit: contain;
         border-radius: 4px;
