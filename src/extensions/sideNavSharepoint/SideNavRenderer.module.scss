@@ -426,6 +426,75 @@ body.sirva-rail-collapsed #sirvaNavRoot a.sirva-nav-link,
 }
 }
 
+
+/* =========================================================
+   Overlay mode (list full screen / any page where the host
+   layout does not reserve room for the rail).
+
+   ========================================================= */
+
+/* No page shift while in overlay mode */
+body.sirva-rail-overlay.sirva-has-rail {
+  --sirva-offset: 0px !important;
+}
+body.sirva-rail-overlay #sp-appBar {
+  width: 0 !important;
+  min-width: 0 !important;
+  flex: 0 0 0 !important;
+  transition: none !important;
+}
+
+/* Used briefly by the layout probe so measurements are instant */
+body.sirva-layout-probe #sp-appBar {
+  transition: none !important;
+}
+
+/* Closed overlay: the rail is fully hidden, only the edge tab remains */
+body.sirva-rail-overlay.sirva-rail-collapsed .sirva-left-rail {
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: translateX(-100%) !important;
+  box-shadow: none !important;
+}
+
+/* Open overlay: full rail floating above the content */
+body.sirva-rail-overlay:not(.sirva-rail-collapsed) .sirva-left-rail {
+  box-shadow: 4px 0 24px rgba(21, 0, 86, 0.35);
+}
+
+/* Edge tab (hidden unless overlay + closed) */
+.sirva-edge-tab {
+  display: none;
+}
+body.sirva-rail-overlay.sirva-rail-collapsed .sirva-edge-tab {
+  display: flex;
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 56px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  background: var(--sirva-bg-dark);
+  color: var(--sirva-cyan);
+  border: 0;
+  border-radius: 0 8px 8px 0;
+  box-shadow: 2px 0 8px rgba(21, 0, 86, 0.35);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 10000;
+  transition: width 0.15s ease, background 0.15s ease;
+}
+body.sirva-rail-overlay.sirva-rail-collapsed .sirva-edge-tab:hover,
+body.sirva-rail-overlay.sirva-rail-collapsed .sirva-edge-tab:focus-visible {
+  width: 26px;
+  background: var(--sirva-bg-dark-hover);
+  outline: none;
+}
+
 }
     
 

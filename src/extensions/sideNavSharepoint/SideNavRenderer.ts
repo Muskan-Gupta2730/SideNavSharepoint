@@ -2,6 +2,21 @@ import { INavItem, DEFAULT_NAV_ITEMS } from './SideNavData';
 import Img from "../../img/logo.png";
 import './SideNavRenderer.module.scss';
 
+const RAIL_WIDTH_EXPANDED: number = 240;
+const RAIL_WIDTH_COLLAPSED: number = 60;
+
+/**
+ * Elements used to measure where the host page content actually starts.
+ * Checked in order. If overlay mode triggers on a page where it should not
+ * (or never triggers where it should), inspect the page in DevTools and
+ * adjust this list.
+ */
+const HOST_CONTENT_SELECTORS: string[] = [
+  '[role="main"]',
+  '[data-automation-id="contentScrollRegion"]',
+  '#spPageCanvasContent'
+];
+
 export interface ISideNavOptions {
   navItems?: INavItem[];
   siteTitle?: string;
@@ -16,6 +31,8 @@ export class SideNavRenderer {
   private _activeFlyoutId: string | null = null;
   private _closeTimeout: number | null = null;
   private _isCollapsed: boolean = false;
+  private _isOverlay: boolean = false;
+  private _collapsedBeforeOverlay: boolean = false;
   private _onResize: (() => void) | null = null;
   private _onKeyDown: ((e: KeyboardEvent) => void) | null = null;
   private _onDocClick: ((e: MouseEvent) => void) | null = null;
@@ -28,24 +45,24 @@ export class SideNavRenderer {
       ? this._options.navItems
       : DEFAULT_NAV_ITEMS;
   }
-private shouldSkipRender(): boolean {
-  // Popup / dialog / iframe ke andar nav mat dikhao
- 
-  try {
-    if (window.self !== window.top) {
+
+  private shouldSkipRender(): boolean {
+    // Do not render the nav inside popups / dialogs / iframes
+    try {
+      if (window.self !== window.top) {
+        return true;
+      }
+    } catch {
       return true;
     }
-  } catch {
-    return true;
-  }
 
-  const query = window.location.search.toLowerCase();
-  if (query.indexOf('isdlg=1') > -1) {
-    return true;
-  }
+    const query = window.location.search.toLowerCase();
+    if (query.indexOf('isdlg=1') > -1) {
+      return true;
+    }
 
-  return false;
-}
+    return false;
+  }
 
   private esc(value: string): string {
     return (value || '')
@@ -55,75 +72,52 @@ private shouldSkipRender(): boolean {
       .replace(/"/g, '&quot;');
   }
 
-public render(targetElement: HTMLElement): void {
-  if (this.shouldSkipRender()) {
-    return;
-  }
+  public render(targetElement: HTMLElement): void {
+    if (this.shouldSkipRender()) {
+      return;
+    }
 
+    this._container = targetElement;
+    this._isOverlay = false;
+    document.body.classList.remove('sirva-rail-overlay');
 
-this._container = targetElement;
-// Set mobile state before rendering the sidebar
-if (this.isCompactView()) {
-  this._isCollapsed = true;
-  document.body.classList.add('sirva-rail-collapsed');
-} else {
-  this._isCollapsed = false;
-  document.body.classList.remove('sirva-rail-collapsed');
-}
+    this.buildDom();
+    // Phones / small screens start collapsed, desktop starts expanded
+    this.setCollapsed(this.isCompactView());
+    this.attachEvents();
+    this.updateActiveFromUrl();
+    this.syncRailTop();
 
+    if (this._onResize) {
+      window.removeEventListener('resize', this._onResize);
+    }
+    this._onResize = (): void => {
+      this.syncRailTop();
+      this.scheduleReconcile(100);
+    };
+    window.addEventListener('resize', this._onResize);
 
-this.buildDom();
-this.attachEvents();
-this.updateActiveFromUrl();
-this.syncRailTop();
-  this._onResize = (): void => this.syncRailTop();
-  window.addEventListener('resize', this._onResize);
-
-  // Phone par rail by default collapsed rakho
-  if (this.isCompactView()) {
-    this._isCollapsed = true;
-    document.body.classList.add('sirva-rail-collapsed');
-    const rail = this._container.querySelector('.sirva-left-rail');
-    if (rail) {
-      rail.classList.add('is-collapsed');
+    if (this._options.shiftMainContent !== false) {
+      this.applyMainContentShift(true);
+      this.startLayoutWatcher();
     }
   }
-
-  if (this._options.shiftMainContent !== false) {
-    this.applyMainContentShift(true);
-  }
-}
-  
 
   /** Call after SPA navigation to re-apply the content offset without rebuilding the nav DOM. */
-
-public refreshShift(): void {
-  if (this.isCompactView()) {
-    this._isCollapsed = true;
-
-    document.body.classList.add('sirva-rail-collapsed');
-
-    const rail = this._container?.querySelector(
-      '.sirva-left-rail'
-    ) as HTMLElement | null;
-
-    if (rail) {
-      rail.classList.add('is-collapsed');
+  public refreshShift(): void {
+    if (this.isCompactView()) {
+      this.setCollapsed(true);
+      const panel = this._container?.querySelector('#sirvaMegaMenuPanel') as HTMLElement | null;
+      this.closeFlyout(panel);
     }
 
-    const panel = this._container?.querySelector(
-      '#sirvaMegaMenuPanel'
-    ) as HTMLElement | null;
+    this.updateActiveFromUrl();
 
-    this.closeFlyout(panel);
+    if (this._options.shiftMainContent !== false) {
+      this.applyMainContentShift(true);
+      this.scheduleReconcile(100);
+    }
   }
-
-  this.updateActiveFromUrl();
-
-  if (this._options.shiftMainContent !== false) {
-    this.applyMainContentShift(true);
-  }
-}
 
   private updateActiveFromUrl(): void {
     if (!this._container) {
@@ -155,18 +149,13 @@ public refreshShift(): void {
   }
 
   private isCompactView(): boolean {
-  return window.innerWidth <= 1024;
-}
-
-private collapseRail(): void {
-  if (!this._isCollapsed) {
-    this.toggleRailCollapse();
+    return window.innerWidth <= 1024;
   }
-}
 
   public dispose(): void {
     this._isCollapsed = false;
-    document.body.classList.remove('sirva-rail-collapsed');
+    this._isOverlay = false;
+    document.body.classList.remove('sirva-rail-collapsed', 'sirva-rail-overlay', 'sirva-layout-probe');
     document.documentElement.classList.remove('sirva-has-rail');
     if (this._onResize) {
       window.removeEventListener('resize', this._onResize);
@@ -181,22 +170,12 @@ private collapseRail(): void {
       this._onDocClick = null;
     }
     this.clearCloseTimeout();
-    this.applyMainContentShift(false);
     this.stopShiftGuard();
-    
+    this.applyMainContentShift(false);
+
     if (this._container) {
       this._container.innerHTML = '';
     }
-  }
-
-  private injectStyles(): void {
-    let style = document.getElementById('sirva-sidenav-custom-styles') as HTMLStyleElement | null;
-    if (!style) {
-      style = document.createElement('style');
-      style.id = 'sirva-sidenav-custom-styles';
-      document.head.appendChild(style);
-    }
-
   }
 
   private buildDom(): void {
@@ -259,6 +238,9 @@ private collapseRail(): void {
           </div>
         </aside>
 
+        <!-- Edge tab: only visible in overlay mode while the rail is closed -->
+        <button class="sirva-edge-tab" id="sirvaEdgeTab" type="button" title="Open navigation" aria-label="Open navigation">&#x203A;</button>
+
         <!-- Flyout Mega Menu Panel -->
         <div class="sirva-megamenu-panel" id="sirvaMegaMenuPanel" role="region" aria-label="Mega menu subnavigation">
           <div class="sirva-megamenu-grid" id="sirvaMegaMenuGrid">
@@ -287,55 +269,48 @@ private collapseRail(): void {
     const grid = this._container.querySelector('#sirvaMegaMenuGrid') as HTMLElement | null;
     const items = this._container.querySelectorAll('.sirva-nav-item');
     const toggleBtn = this._container.querySelector('#sirvaRailToggle') as HTMLButtonElement | null;
+    const edgeTab = this._container.querySelector('#sirvaEdgeTab') as HTMLButtonElement | null;
 
+    // On compact screens and in overlay mode, tapping a real link closes the rail
+    this._container.addEventListener('click', (e) => {
+      if (!this.isCompactView() && !this._isOverlay) {
+        return;
+      }
 
-this._container.addEventListener('click', (e) => {
-  if (!this.isCompactView()) {
-    return;
-  }
+      const link = (e.target as HTMLElement).closest(
+        'a.sirva-nav-link, a.sirva-megamenu-link'
+      ) as HTMLAnchorElement | null;
 
-  const link = (e.target as HTMLElement).closest(
-    'a.sirva-nav-link, a.sirva-megamenu-link'
-  ) as HTMLAnchorElement | null;
+      if (!link) {
+        return;
+      }
 
-  if (!link) {
-    return;
-  }
+      const href = link.getAttribute('href');
 
-  const href = link.getAttribute('href');
+      if (!href || href === '#') {
+        return;
+      }
 
-  if (!href || href === '#') {
-    return;
-  }
+      // Keep mega-menu parent links clickable for opening submenus
+      if (
+        link.classList.contains('sirva-nav-link') &&
+        link.getAttribute('aria-haspopup') === 'true'
+      ) {
+        return;
+      }
 
-  // Keep mega-menu parent links clickable for opening submenus
-  if (
-    link.classList.contains('sirva-nav-link') &&
-    link.getAttribute('aria-haspopup') === 'true'
-  ) {
-    return;
-  }
+      this.setCollapsed(true);
+      this.closeFlyout(panel);
+    });
 
-  // Close immediately when another navigation link is tapped
-  this._isCollapsed = true;
-  document.body.classList.add('sirva-rail-collapsed');
-
-  const rail = this._container?.querySelector(
-    '.sirva-left-rail'
-  ) as HTMLElement | null;
-
-  if (rail) {
-    rail.classList.add('is-collapsed');
-  }
-
-  const panel = this._container?.querySelector(
-    '#sirvaMegaMenuPanel'
-  ) as HTMLElement | null;
-
-  this.closeFlyout(panel);
-});
     if (toggleBtn) {
       toggleBtn.addEventListener('click', () => {
+        this.toggleRailCollapse();
+      });
+    }
+
+    if (edgeTab) {
+      edgeTab.addEventListener('click', () => {
         this.toggleRailCollapse();
       });
     }
@@ -377,14 +352,24 @@ this._container.addEventListener('click', (e) => {
     this._onKeyDown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
         this.closeFlyout(panel);
+        if (this._isOverlay && !this._isCollapsed) {
+          this.setCollapsed(true);
+        }
       }
     };
     document.addEventListener('keydown', this._onKeyDown);
 
     this._onDocClick = (e: MouseEvent): void => {
       const target = e.target as HTMLElement;
-      if (panel && !panel.contains(target) && !this._container?.contains(target)) {
+      const insideNav = !!this._container && this._container.contains(target);
+
+      if (panel && !panel.contains(target) && !insideNav) {
         this.closeFlyout(panel);
+      }
+
+      // Overlay mode: clicking outside closes the open rail
+      if (this._isOverlay && !this._isCollapsed && !insideNav) {
+        this.setCollapsed(true);
       }
 
       const hamburger = target.closest(
@@ -394,6 +379,11 @@ this._container.addEventListener('click', (e) => {
         window.setTimeout(() => this.applyMainContentShift(true), 150);
         window.setTimeout(() => this.applyMainContentShift(true), 500);
       }
+
+      // The list "full screen" toggle does not trigger SPA navigation,
+      // so re-check the layout after any click.
+      this.scheduleReconcile(250);
+      window.setTimeout(() => this.reconcileLayoutMode(), 800);
     };
     document.addEventListener('click', this._onDocClick);
   }
@@ -454,14 +444,13 @@ this._container.addEventListener('click', (e) => {
     this._activeFlyoutId = null;
   }
 
+  private scheduleClose(panel: HTMLElement | null): void {
+    this.clearCloseTimeout();
 
-private scheduleClose(panel: HTMLElement | null): void {
-  this.clearCloseTimeout();
-
-  this._closeTimeout = window.setTimeout(() => {
-    this.closeFlyout(panel);
-  }, 350);
-}
+    this._closeTimeout = window.setTimeout(() => {
+      this.closeFlyout(panel);
+    }, 350);
+  }
 
   private clearCloseTimeout(): void {
     if (this._closeTimeout !== null) {
@@ -470,21 +459,25 @@ private scheduleClose(panel: HTMLElement | null): void {
     }
   }
 
-private toggleRailCollapse(): void {
-  this._isCollapsed = !this._isCollapsed;
-  const panel = this._container?.querySelector('#sirvaMegaMenuPanel') as HTMLElement | null;
-  const rail = this._container?.querySelector('.sirva-left-rail') as HTMLElement | null;
-  this.closeFlyout(panel);
-
-  document.body.classList.toggle('sirva-rail-collapsed', this._isCollapsed);
-  if (rail) {
-    rail.classList.toggle('is-collapsed', this._isCollapsed);
+  /** Single place that applies the collapsed / expanded state. */
+  private setCollapsed(collapsed: boolean): void {
+    this._isCollapsed = collapsed;
+    document.body.classList.toggle('sirva-rail-collapsed', collapsed);
+    const rail = this._container?.querySelector('.sirva-left-rail') as HTMLElement | null;
+    if (rail) {
+      rail.classList.toggle('is-collapsed', collapsed);
+    }
   }
 
-  if (this._options.shiftMainContent !== false) {
-    this.applyMainContentShift(true);
+  private toggleRailCollapse(): void {
+    const panel = this._container?.querySelector('#sirvaMegaMenuPanel') as HTMLElement | null;
+    this.closeFlyout(panel);
+    this.setCollapsed(!this._isCollapsed);
+
+    if (this._options.shiftMainContent !== false) {
+      this.applyMainContentShift(true);
+    }
   }
-}
 
   private syncRailTop(): void {
     const suite = document.querySelector(
@@ -505,6 +498,28 @@ private toggleRailCollapse(): void {
     }
   }
 
+  // ---------------------------------------------------------------------
+  // Layout watcher: decides between "push content" and "overlay" mode
+  // ---------------------------------------------------------------------
+
+  private startLayoutWatcher(): void {
+    this.stopShiftGuard();
+
+    if (typeof MutationObserver === 'undefined') {
+      return;
+    }
+
+    this._shiftObserver = new MutationObserver(() => this.scheduleReconcile(200));
+    this._shiftObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style', 'hidden']
+    });
+
+    this.scheduleReconcile(100);
+  }
+
   private stopShiftGuard(): void {
     if (this._shiftObserver) {
       this._shiftObserver.disconnect();
@@ -513,6 +528,102 @@ private toggleRailCollapse(): void {
     if (this._shiftGuardTimer !== null) {
       window.clearTimeout(this._shiftGuardTimer);
       this._shiftGuardTimer = null;
+    }
+  }
+
+  /** Throttled: at most one pending check at a time. */
+  private scheduleReconcile(delay: number): void {
+    if (this._shiftGuardTimer !== null) {
+      return;
+    }
+    this._shiftGuardTimer = window.setTimeout(() => {
+      this._shiftGuardTimer = null;
+      this.reconcileLayoutMode();
+    }, delay);
+  }
+
+  private reconcileLayoutMode(): void {
+    // Bail out if the nav was disposed / removed
+    if (!this._container || !this._container.querySelector('#sirvaLeftRail')) {
+      return;
+    }
+    if (this._options.shiftMainContent === false) {
+      return;
+    }
+
+    if (this.isCompactView()) {
+      // Compact view has its own overlay behaviour (media query), keep it untouched
+      this.setOverlayMode(false, false);
+    } else {
+      this.setOverlayMode(!this.hostReservesRailSpace());
+    }
+
+    this.syncRailTop();
+
+    // Discard mutation records caused by our own class toggles (prevents a feedback loop)
+    if (this._shiftObserver) {
+      this._shiftObserver.takeRecords();
+    }
+  }
+
+  /**
+   * True when the host page content starts to the right of the rail.
+   * In list full-screen mode SharePoint renders content from x = 0, so this returns false.
+   */
+  private hostReservesRailSpace(): boolean {
+    const body = document.body;
+    const wasOverlay = this._isOverlay;
+
+    // While in overlay mode our CSS zeroes the spacer, so briefly lift it to measure
+    // the host layout honestly. Class changes are reverted synchronously (no paint).
+    if (wasOverlay) {
+      body.classList.add('sirva-layout-probe');
+      body.classList.remove('sirva-rail-overlay');
+    }
+
+    let left: number | null = null;
+    for (const selector of HOST_CONTENT_SELECTORS) {
+      const el = document.querySelector(selector) as HTMLElement | null;
+      if (!el) {
+        continue;
+      }
+      const rect = el.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        left = rect.left;
+        break;
+      }
+    }
+
+    if (wasOverlay) {
+      body.classList.add('sirva-rail-overlay');
+      body.classList.remove('sirva-layout-probe');
+    }
+
+    // Nothing measurable (page still loading): keep the current mode
+    if (left === null) {
+      return !wasOverlay;
+    }
+
+    const footprint = this._isCollapsed ? RAIL_WIDTH_COLLAPSED : RAIL_WIDTH_EXPANDED;
+    return left >= footprint - 4;
+  }
+
+  private setOverlayMode(enable: boolean, restoreCollapse: boolean = true): void {
+    if (enable === this._isOverlay) {
+      return;
+    }
+
+    this._isOverlay = enable;
+    document.body.classList.toggle('sirva-rail-overlay', enable);
+
+    const panel = this._container?.querySelector('#sirvaMegaMenuPanel') as HTMLElement | null;
+    this.closeFlyout(panel);
+
+    if (enable) {
+      this._collapsedBeforeOverlay = this._isCollapsed;
+      this.setCollapsed(true);
+    } else if (restoreCollapse) {
+      this.setCollapsed(this._collapsedBeforeOverlay);
     }
   }
 
