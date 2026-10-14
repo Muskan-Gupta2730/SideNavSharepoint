@@ -296,6 +296,16 @@ body.sirva-rail-collapsed #sirvaNavRoot a.sirva-nav-link,
   background: rgba(111, 240, 238, 0.10) !important;
   border-left-color: var(--sirva-light-blue) !important;
 }
+/* Active link par hover: text white ho jaaye (cyan border waisa hi rahe) */
+#sirvaNavRoot .sirva-nav-item.is-active a.sirva-nav-link:hover,
+#sirvaNavRoot .sirva-nav-item.is-active a.sirva-nav-link:focus,
+#sirvaNavRoot .sirva-nav-item.is-flyout-open a.sirva-nav-link:hover,
+#sirvaNavRoot .sirva-nav-item.is-flyout-open a.sirva-nav-link:focus {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  background: rgba(111, 240, 238, 0.10) !important;
+  border-left-color: var(--sirva-light-blue) !important;
+}
 
 
 
