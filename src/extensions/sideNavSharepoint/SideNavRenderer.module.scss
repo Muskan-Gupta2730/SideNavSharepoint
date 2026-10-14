@@ -233,11 +233,11 @@ body.sirva-rail-collapsed #sirvaNavRoot a.sirva-nav-link,
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 11px 22px;
-        color: #ffffff;
+        padding:11px 22px;
+        color: rgba(255, 255, 255, 0.82);
         text-decoration: none;
-        font-size: 16px;
-        font-weight: 450;
+        font-size: 15px;
+        font-weight: 600;
         letter-spacing: 0.01em;
         position: relative;
         transition: color 0.18s ease, border-color 0.18s ease;
@@ -258,6 +258,7 @@ body.sirva-rail-collapsed #sirvaNavRoot a.sirva-nav-link,
       .sirva-nav-item.is-flyout-open .sirva-chevron {
         opacity: 1;
         transform: translateX(2px);
+        
       }
 
       /* =========================================================
@@ -291,7 +292,7 @@ body.sirva-rail-collapsed #sirvaNavRoot a.sirva-nav-link,
 #sirvaNavRoot .sirva-nav-item.is-active a.sirva-nav-link,
 #sirvaNavRoot .sirva-nav-item.is-flyout-open a.sirva-nav-link {
   color: var(--sirva-light-blue) !important;
-  -webkit-text-fill-color: var(--sirva-light-blue) !important;
+  -webkit-text-fill-color:var(--sirva-light-blue)  !important;
   background: rgba(111, 240, 238, 0.10) !important;
   border-left-color: var(--sirva-light-blue) !important;
 }
