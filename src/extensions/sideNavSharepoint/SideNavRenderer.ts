@@ -28,7 +28,10 @@ export class SideNavRenderer {
   private _container: HTMLElement | null = null;
   private _options: ISideNavOptions;
   private _navItems: INavItem[];
-  private _activeFlyoutId: string | null = null;
+  private _activeCascadeId: string | null = null;
+  private _activeTier1Item: INavItem | null = null;
+  private _tier2SwitchTimeout: number | null = null;
+  private _activeItemEl: HTMLElement | null = null;
   private _closeTimeout: number | null = null;
   private _isCollapsed: boolean = false;
   private _isOverlay: boolean = false;
@@ -44,6 +47,41 @@ export class SideNavRenderer {
     this._navItems = this._options.navItems && this._options.navItems.length > 0
       ? this._options.navItems
       : DEFAULT_NAV_ITEMS;
+  }
+
+  private getItemChildren(item?: INavItem | null): INavItem[] {
+    if (!item) {
+      return [];
+    }
+    if (item.children && item.children.length > 0) {
+      return item.children;
+    }
+    if (item.columns && item.columns.length > 0) {
+      const list: INavItem[] = [];
+      item.columns.forEach((col, idx) => {
+        const subItems = (col.items || []).map((sub) => ({
+          id: sub.id,
+          title: sub.title,
+          url: sub.url,
+          isExternal: sub.isExternal,
+          hasChevron: false
+        }));
+        list.push({
+          id: `${item.id}-col-${idx}`,
+          title: col.header,
+          url: col.headerUrl || '#',
+          isExternal: col.headerIsExternal,
+          hasChevron: subItems.length > 0,
+          children: subItems.length > 0 ? subItems : undefined
+        });
+      });
+      return list;
+    }
+    return [];
+  }
+
+  private hasItemChildren(item?: INavItem | null): boolean {
+    return this.getItemChildren(item).length > 0;
   }
 
   private shouldSkipRender(): boolean {
@@ -70,6 +108,27 @@ export class SideNavRenderer {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  }
+
+  private targetAttr(isExternal?: boolean): string {
+    return isExternal ? 'target="_blank" rel="noopener noreferrer"' : '';
+  }
+
+  private normalizePath(p: string): string {
+    return p.toLowerCase().replace(/\/$/, '');
+  }
+
+  /** True when the given URL points at the page currently open. */
+  private isCurrentUrl(url?: string): boolean {
+    if (!url || url === '#') {
+      return false;
+    }
+    try {
+      const itemPath = this.normalizePath(new URL(url, window.location.origin).pathname);
+      return itemPath === this.normalizePath(window.location.pathname);
+    } catch {
+      return false;
+    }
   }
 
   public render(targetElement: HTMLElement): void {
@@ -107,8 +166,7 @@ export class SideNavRenderer {
   public refreshShift(): void {
     if (this.isCompactView()) {
       this.setCollapsed(true);
-      const panel = this._container?.querySelector('#sirvaMegaMenuPanel') as HTMLElement | null;
-      this.closeFlyout(panel);
+      this.closeCascadingMenu();
     }
 
     this.updateActiveFromUrl();
@@ -119,27 +177,30 @@ export class SideNavRenderer {
     }
   }
 
+  /**
+   * Marks the rail item as active when the current page is the item itself
+   * OR any link inside its flyout (so "Payslips" keeps "Pay & benefits" lit).
+   */
   private updateActiveFromUrl(): void {
     if (!this._container) {
       return;
     }
 
-    const normalize = (p: string): string => p.toLowerCase().replace(/\/$/, '');
-    const current = normalize(window.location.pathname);
-
     let activeId: string | null = null;
+
     for (const item of this._navItems) {
-      if (!item.url || item.url === '#') {
-        continue;
+      let match = this.isCurrentUrl(item.url);
+
+      if (!match) {
+        const children = this.getItemChildren(item);
+        match = children.some((c) =>
+          this.isCurrentUrl(c.url) || this.getItemChildren(c).some((sub) => this.isCurrentUrl(sub.url))
+        );
       }
-      try {
-        const itemPath = normalize(new URL(item.url, window.location.origin).pathname);
-        if (itemPath === current) {
-          activeId = item.id;
-          break;
-        }
-      } catch {
-        // ignore malformed URLs
+
+      if (match) {
+        activeId = item.id;
+        break;
       }
     }
 
@@ -170,6 +231,7 @@ export class SideNavRenderer {
       this._onDocClick = null;
     }
     this.clearCloseTimeout();
+    this.clearTier2SwitchTimeout();
     this.stopShiftGuard();
     this.applyMainContentShift(false);
 
@@ -197,11 +259,13 @@ export class SideNavRenderer {
     `;
 
     const navItemsHtml = this._navItems.map((item) => {
+      const hasSub = this.hasItemChildren(item);
       const activeClass = item.isActive ? 'is-active' : '';
-      const chevronHtml = item.hasChevron ? '<span class="sirva-chevron">&#x203A;</span>' : '';
+      const chevronHtml = (item.hasChevron || hasSub) ? '<span class="sirva-chevron" aria-hidden="true">&#x203A;</span>' : '';
       return `
         <li class="sirva-nav-item ${activeClass}" data-item-id="${this.esc(item.id)}">
-          <a class="sirva-nav-link" href="${this.esc(item.url || '#')}" role="button" aria-haspopup="${item.columns ? 'true' : 'false'}">
+          <a class="sirva-nav-link" href="${this.esc(item.url || '#')}" ${this.targetAttr(item.isExternal)}
+             role="button" aria-haspopup="${hasSub ? 'true' : 'false'}" aria-expanded="false">
             <span>${this.esc(item.title)}</span>
             ${chevronHtml}
           </a>
@@ -241,10 +305,15 @@ export class SideNavRenderer {
         <!-- Edge tab: only visible in overlay mode while the rail is closed -->
         <button class="sirva-edge-tab" id="sirvaEdgeTab" type="button" title="Open navigation" aria-label="Open navigation">&#x203A;</button>
 
-        <!-- Flyout Mega Menu Panel -->
-        <div class="sirva-megamenu-panel" id="sirvaMegaMenuPanel" role="region" aria-label="Mega menu subnavigation">
-          <div class="sirva-megamenu-grid" id="sirvaMegaMenuGrid">
-            <!-- Dynamically populated -->
+        <!-- Cascading Navigation Flyout Container -->
+        <div class="sirva-cascade-container" id="sirvaCascadeContainer" role="region" aria-label="Cascading subnavigation">
+          <!-- Tier 1: Level 2 Items -->
+          <div class="sirva-cascade-panel sirva-cascade-tier1" id="sirvaCascadeTier1">
+            <ul class="sirva-cascade-list" id="sirvaCascadeList1"></ul>
+          </div>
+          <!-- Tier 2: Level 3 Items (Cascades to the right) -->
+          <div class="sirva-cascade-panel sirva-cascade-tier2" id="sirvaCascadeTier2">
+            <ul class="sirva-cascade-list" id="sirvaCascadeList2"></ul>
           </div>
         </div>
       </div>
@@ -265,20 +334,15 @@ export class SideNavRenderer {
       return;
     }
 
-    const panel = this._container.querySelector('#sirvaMegaMenuPanel') as HTMLElement | null;
-    const grid = this._container.querySelector('#sirvaMegaMenuGrid') as HTMLElement | null;
+    const cascadeContainer = this._container.querySelector('#sirvaCascadeContainer') as HTMLElement | null;
     const items = this._container.querySelectorAll('.sirva-nav-item');
     const toggleBtn = this._container.querySelector('#sirvaRailToggle') as HTMLButtonElement | null;
     const edgeTab = this._container.querySelector('#sirvaEdgeTab') as HTMLButtonElement | null;
 
-    // On compact screens and in overlay mode, tapping a real link closes the rail
+    // Tapping a real link closes rail and menu on compact screens / overlay mode
     this._container.addEventListener('click', (e) => {
-      if (!this.isCompactView() && !this._isOverlay) {
-        return;
-      }
-
       const link = (e.target as HTMLElement).closest(
-        'a.sirva-nav-link, a.sirva-megamenu-link'
+        'a.sirva-nav-link, a.sirva-cascade-link'
       ) as HTMLAnchorElement | null;
 
       if (!link) {
@@ -291,7 +355,6 @@ export class SideNavRenderer {
         return;
       }
 
-      // Keep mega-menu parent links clickable for opening submenus
       if (
         link.classList.contains('sirva-nav-link') &&
         link.getAttribute('aria-haspopup') === 'true'
@@ -299,8 +362,10 @@ export class SideNavRenderer {
         return;
       }
 
-      this.setCollapsed(true);
-      this.closeFlyout(panel);
+      if (this.isCompactView() || this._isOverlay) {
+        this.setCollapsed(true);
+      }
+      this.closeCascadingMenu();
     });
 
     if (toggleBtn) {
@@ -318,40 +383,54 @@ export class SideNavRenderer {
     items.forEach((itemEl) => {
       const id = itemEl.getAttribute('data-item-id');
       const itemData = this._navItems.find((n) => `${n.id}` === id);
+      const hasSub = this.hasItemChildren(itemData);
 
       itemEl.addEventListener('mouseenter', () => {
         this.clearCloseTimeout();
-        if (itemData && itemData.columns && itemData.columns.length > 0) {
-          this.openFlyout(itemData, itemEl as HTMLElement, panel, grid);
+        if (itemData && hasSub) {
+          this.openCascadingMenu(itemData, itemEl as HTMLElement);
         } else {
-          this.closeFlyout(panel);
+          this.closeCascadingMenu();
         }
       });
 
       itemEl.addEventListener('mouseleave', () => {
-        this.scheduleClose(panel);
+        this.scheduleClose();
       });
 
       itemEl.addEventListener('click', (e) => {
-        if (itemData && itemData.columns && itemData.columns.length > 0) {
+        if (itemData && hasSub) {
           e.preventDefault();
-          this.openFlyout(itemData, itemEl as HTMLElement, panel, grid);
+          this.openCascadingMenu(itemData, itemEl as HTMLElement);
+        }
+      });
+
+      // Keyboard: ArrowRight jumps from the rail item into Tier 1
+      itemEl.addEventListener('keydown', (evt) => {
+        const e = evt as KeyboardEvent;
+        if (itemData && hasSub && (e.key === 'ArrowRight' || e.key === ' ')) {
+          e.preventDefault();
+          this.openCascadingMenu(itemData, itemEl as HTMLElement);
+          this.focusTier1First();
         }
       });
     });
 
-    if (panel) {
-      panel.addEventListener('mouseenter', () => {
+    if (cascadeContainer) {
+      cascadeContainer.addEventListener('mouseenter', () => {
         this.clearCloseTimeout();
       });
-      panel.addEventListener('mouseleave', () => {
-        this.scheduleClose(panel);
+      cascadeContainer.addEventListener('mouseleave', () => {
+        this.scheduleClose();
       });
     }
 
     this._onKeyDown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
-        this.closeFlyout(panel);
+        const wasOpen = !!cascadeContainer && cascadeContainer.classList.contains('is-visible');
+        if (wasOpen) {
+          this.returnFocusToRail();
+        }
         if (this._isOverlay && !this._isCollapsed) {
           this.setCollapsed(true);
         }
@@ -363,8 +442,8 @@ export class SideNavRenderer {
       const target = e.target as HTMLElement;
       const insideNav = !!this._container && this._container.contains(target);
 
-      if (panel && !panel.contains(target) && !insideNav) {
-        this.closeFlyout(panel);
+      if (cascadeContainer && !cascadeContainer.contains(target) && !insideNav) {
+        this.closeCascadingMenu();
       }
 
       // Overlay mode: clicking outside closes the open rail
@@ -380,82 +459,261 @@ export class SideNavRenderer {
         window.setTimeout(() => this.applyMainContentShift(true), 500);
       }
 
-      // The list "full screen" toggle does not trigger SPA navigation,
-      // so re-check the layout after any click.
       this.scheduleReconcile(250);
       window.setTimeout(() => this.reconcileLayoutMode(), 800);
     };
     document.addEventListener('click', this._onDocClick);
   }
 
-  private openFlyout(
-    itemData: INavItem,
-    itemEl: HTMLElement,
-    panel: HTMLElement | null,
-    grid: HTMLElement | null
-  ): void {
-    if (!panel || !grid || !itemData.columns) {
+  private focusTier1First(): void {
+    const first = this._container?.querySelector('#sirvaCascadeList1 .sirva-cascade-link') as HTMLElement | null;
+    if (first) {
+      first.focus();
+    }
+  }
+
+  private focusTier2First(): void {
+    const first = this._container?.querySelector('#sirvaCascadeList2 .sirva-cascade-link') as HTMLElement | null;
+    if (first) {
+      first.focus();
+    }
+  }
+
+  private returnFocusToRail(): void {
+    const itemEl = this._activeItemEl;
+    this.closeCascadingMenu();
+    const link = itemEl?.querySelector('a.sirva-nav-link') as HTMLElement | null;
+    if (link) {
+      link.focus();
+    }
+  }
+
+  private openCascadingMenu(itemData: INavItem, itemEl: HTMLElement): void {
+    const container = this._container?.querySelector('#sirvaCascadeContainer') as HTMLElement | null;
+    const tier1List = this._container?.querySelector('#sirvaCascadeList1') as HTMLElement | null;
+    if (!container || !tier1List) {
       return;
     }
 
-    this._activeFlyoutId = itemData.id;
+    const children = this.getItemChildren(itemData);
+    if (children.length === 0) {
+      this.closeCascadingMenu();
+      return;
+    }
+
+    this._activeCascadeId = itemData.id;
+    this._activeItemEl = itemEl;
 
     const allItems = this._container?.querySelectorAll('.sirva-nav-item');
-    allItems?.forEach((it) => it.classList.remove('is-flyout-open'));
+    allItems?.forEach((it) => {
+      it.classList.remove('is-flyout-open');
+      it.querySelector('a.sirva-nav-link')?.setAttribute('aria-expanded', 'false');
+    });
     itemEl.classList.add('is-flyout-open');
+    itemEl.querySelector('a.sirva-nav-link')?.setAttribute('aria-expanded', 'true');
 
-    const columnsHtml = itemData.columns.map((col) => {
-      const linksHtml = col.items.map((sub) => {
-        return `
-          <li>
-            <a href="${this.esc(sub.url)}" class="sirva-megamenu-link" ${sub.isExternal ? 'target="_blank" rel="noopener noreferrer"' : ''}>
-              ${this.esc(sub.title)}
-            </a>
-          </li>
-        `;
-      }).join('');
-
+    tier1List.innerHTML = children.map((child) => {
+      const hasGrandChildren = this.hasItemChildren(child);
+      const current = this.isCurrentUrl(child.url) ? ' is-current' : '';
+      const chevronHtml = hasGrandChildren
+        ? '<span class="sirva-cascade-arrow" aria-hidden="true">&#x203A;</span>'
+        : '';
       return `
-        <div class="sirva-megamenu-col">
-          <h4 class="sirva-megamenu-heading">${this.esc(col.header)}</h4>
-          <ul class="sirva-megamenu-links">
-            ${linksHtml}
-          </ul>
-        </div>
+        <li class="sirva-cascade-item" data-item-id="${this.esc(child.id)}">
+          <a class="sirva-cascade-link ${hasGrandChildren ? 'has-children' : ''}${current}"
+             href="${this.esc(child.url || '#')}"
+             ${this.targetAttr(child.isExternal)}
+             role="button"
+             aria-haspopup="${hasGrandChildren ? 'true' : 'false'}"
+             aria-expanded="false">
+            <span class="sirva-cascade-text">${this.esc(child.title)}</span>
+            ${chevronHtml}
+          </a>
+        </li>
       `;
     }).join('');
 
-    grid.innerHTML = columnsHtml;
+    const tier1Items = tier1List.querySelectorAll('.sirva-cascade-item');
+    tier1Items.forEach((t1El) => {
+      const childId = t1El.getAttribute('data-item-id');
+      const childData = children.find((c) => c.id === childId);
+      if (!childData) {
+        return;
+      }
+      const hasGrandChildren = this.hasItemChildren(childData);
 
+      t1El.addEventListener('mouseenter', () => {
+        this.clearCloseTimeout();
+        this.clearTier2SwitchTimeout();
+
+        if (hasGrandChildren) {
+          this._tier2SwitchTimeout = window.setTimeout(() => {
+            this.openTier2(childData, t1El as HTMLElement);
+          }, 80);
+        } else {
+          this._tier2SwitchTimeout = window.setTimeout(() => {
+            this.closeTier2();
+          }, 80);
+        }
+      });
+
+      t1El.addEventListener('click', (e) => {
+        if (hasGrandChildren && (!childData.url || childData.url === '#')) {
+          e.preventDefault();
+          this.openTier2(childData, t1El as HTMLElement);
+        }
+      });
+
+      t1El.addEventListener('keydown', (evt) => {
+        const e = evt as KeyboardEvent;
+        if (e.key === 'ArrowRight' && hasGrandChildren) {
+          e.preventDefault();
+          this.openTier2(childData, t1El as HTMLElement);
+          this.focusTier2First();
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          this.returnFocusToRail();
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          const next = t1El.nextElementSibling?.querySelector('.sirva-cascade-link') as HTMLElement | null;
+          if (next) { next.focus(); }
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          const prev = t1El.previousElementSibling?.querySelector('.sirva-cascade-link') as HTMLElement | null;
+          if (prev) { prev.focus(); }
+        }
+      });
+    });
+
+    this.closeTier2();
+
+    container.classList.add('is-visible');
+
+    // Align with the hovered rail item, clamped to screen height
     const rect = itemEl.getBoundingClientRect();
-    const panelTop = Math.max(rect.top - 12, 60);
-    panel.style.top = `${panelTop}px`;
-
-    panel.classList.add('is-visible');
+    const desiredTop = Math.max(rect.top - 6, 56);
+    const maxTop = window.innerHeight - container.offsetHeight - 16;
+    container.style.top = `${Math.max(56, Math.min(desiredTop, Math.max(56, maxTop)))}px`;
   }
 
-  private closeFlyout(panel: HTMLElement | null): void {
-    if (!panel) {
+  private openTier2(childData: INavItem, t1El: HTMLElement): void {
+    const container = this._container?.querySelector('#sirvaCascadeContainer') as HTMLElement | null;
+    const tier2Panel = this._container?.querySelector('#sirvaCascadeTier2') as HTMLElement | null;
+    const tier2List = this._container?.querySelector('#sirvaCascadeList2') as HTMLElement | null;
+    if (!container || !tier2Panel || !tier2List) {
       return;
     }
-    panel.classList.remove('is-visible');
-    const allItems = this._container?.querySelectorAll('.sirva-nav-item');
-    allItems?.forEach((it) => it.classList.remove('is-flyout-open'));
-    this._activeFlyoutId = null;
+
+    const subChildren = this.getItemChildren(childData);
+    if (subChildren.length === 0) {
+      this.closeTier2();
+      return;
+    }
+
+    this._activeTier1Item = childData;
+
+    const tier1Items = this._container?.querySelectorAll('.sirva-cascade-tier1 .sirva-cascade-item');
+    tier1Items?.forEach((it) => {
+      it.classList.remove('is-active-tier1');
+      it.querySelector('.sirva-cascade-link')?.setAttribute('aria-expanded', 'false');
+    });
+    t1El.classList.add('is-active-tier1');
+    t1El.querySelector('.sirva-cascade-link')?.setAttribute('aria-expanded', 'true');
+
+    tier2List.innerHTML = subChildren.map((sub) => {
+      const current = this.isCurrentUrl(sub.url) ? ' is-current' : '';
+      const aria = current ? ' aria-current="page"' : '';
+      return `
+        <li class="sirva-cascade-item" data-item-id="${this.esc(sub.id)}">
+          <a class="sirva-cascade-link${current}"${aria} href="${this.esc(sub.url || '#')}" ${this.targetAttr(sub.isExternal)}>
+            <span class="sirva-cascade-text">${this.esc(sub.title)}</span>
+          </a>
+        </li>
+      `;
+    }).join('');
+
+    const tier2Items = tier2List.querySelectorAll('.sirva-cascade-item');
+    tier2Items.forEach((t2El) => {
+      t2El.addEventListener('mouseenter', () => {
+        this.clearCloseTimeout();
+        this.clearTier2SwitchTimeout();
+      });
+
+      t2El.addEventListener('keydown', (evt) => {
+        const e = evt as KeyboardEvent;
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          const t1Link = t1El.querySelector('.sirva-cascade-link') as HTMLElement | null;
+          if (t1Link) { t1Link.focus(); }
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          const next = t2El.nextElementSibling?.querySelector('.sirva-cascade-link') as HTMLElement | null;
+          if (next) { next.focus(); }
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          const prev = t2El.previousElementSibling?.querySelector('.sirva-cascade-link') as HTMLElement | null;
+          if (prev) { prev.focus(); }
+        }
+      });
+    });
+
+    tier2Panel.classList.add('is-visible');
+
+    // Align Tier 2 top with the active Tier 1 item
+    const offsetTop = t1El.offsetTop;
+    const containerRect = container.getBoundingClientRect();
+    const maxMargin = Math.max(0, window.innerHeight - containerRect.top - tier2Panel.offsetHeight - 16);
+    tier2Panel.style.marginTop = `${Math.min(Math.max(0, offsetTop - 4), maxMargin)}px`;
   }
 
-  private scheduleClose(panel: HTMLElement | null): void {
-    this.clearCloseTimeout();
+  private closeTier2(): void {
+    this.clearTier2SwitchTimeout();
+    this._activeTier1Item = null;
+    const tier2Panel = this._container?.querySelector('#sirvaCascadeTier2') as HTMLElement | null;
+    if (tier2Panel) {
+      tier2Panel.classList.remove('is-visible');
+      tier2Panel.style.marginTop = '0px';
+    }
+    const tier1Items = this._container?.querySelectorAll('.sirva-cascade-tier1 .sirva-cascade-item');
+    tier1Items?.forEach((it) => {
+      it.classList.remove('is-active-tier1');
+      it.querySelector('.sirva-cascade-link')?.setAttribute('aria-expanded', 'false');
+    });
+  }
 
+  private closeCascadingMenu(): void {
+    this.clearTier2SwitchTimeout();
+    this.closeTier2();
+    const container = this._container?.querySelector('#sirvaCascadeContainer') as HTMLElement | null;
+    if (container) {
+      container.classList.remove('is-visible');
+    }
+    const allItems = this._container?.querySelectorAll('.sirva-nav-item');
+    allItems?.forEach((it) => {
+      it.classList.remove('is-flyout-open');
+      it.querySelector('a.sirva-nav-link')?.setAttribute('aria-expanded', 'false');
+    });
+    this._activeCascadeId = null;
+  }
+
+  private scheduleClose(): void {
+    this.clearCloseTimeout();
     this._closeTimeout = window.setTimeout(() => {
-      this.closeFlyout(panel);
-    }, 350);
+      this.closeCascadingMenu();
+    }, 300);
   }
 
   private clearCloseTimeout(): void {
     if (this._closeTimeout !== null) {
       window.clearTimeout(this._closeTimeout);
       this._closeTimeout = null;
+    }
+  }
+
+  private clearTier2SwitchTimeout(): void {
+    if (this._tier2SwitchTimeout !== null) {
+      window.clearTimeout(this._tier2SwitchTimeout);
+      this._tier2SwitchTimeout = null;
     }
   }
 
@@ -470,8 +728,7 @@ export class SideNavRenderer {
   }
 
   private toggleRailCollapse(): void {
-    const panel = this._container?.querySelector('#sirvaMegaMenuPanel') as HTMLElement | null;
-    this.closeFlyout(panel);
+    this.closeCascadingMenu();
     this.setCollapsed(!this._isCollapsed);
 
     if (this._options.shiftMainContent !== false) {
@@ -616,8 +873,7 @@ export class SideNavRenderer {
     this._isOverlay = enable;
     document.body.classList.toggle('sirva-rail-overlay', enable);
 
-    const panel = this._container?.querySelector('#sirvaMegaMenuPanel') as HTMLElement | null;
-    this.closeFlyout(panel);
+    this.closeCascadingMenu();
 
     if (enable) {
       this._collapsedBeforeOverlay = this._isCollapsed;

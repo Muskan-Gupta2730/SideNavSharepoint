@@ -34,6 +34,7 @@
     overflow-x: auto !important;
   }
   body.sirva-has-rail.sirva-rail-collapsed {
+    --sirva-rail-width: 60px;
     --sirva-offset: 60px;
   }
 
@@ -321,75 +322,171 @@
   }
 
   /* =========================================================
-     Mega menu flyout panel
+     Cascading Navigation Flyout Panels
      ========================================================= */
-  .sirva-megamenu-panel {
+  .sirva-cascade-container {
     position: fixed;
-    left: calc(var(--sirva-rail-width) + 16px);
+    left: calc(var(--sirva-rail-width) + 10px);
     top: calc(var(--sirva-top-height) + 14px);
+    z-index: 10010;
+    display: none;
+    align-items: flex-start;
+    gap: 6px;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity 0.16s cubic-bezier(0.16, 1, 0.3, 1), transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .sirva-cascade-container.is-visible {
+    display: flex;
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  .sirva-cascade-panel {
     background: #ffffff;
     border-radius: 8px;
-    box-shadow: 0 12px 28px rgba(21, 0, 86, 0.16);
-    padding: 30px 42px 34px 42px;
-    z-index: 10010;
-    min-width: 580px;
-    max-width: 760px;
-    display: none;
-    opacity: 0;
-    transform: translateY(4px);
-    transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-    border: 1px solid #E7E6E5;
+    border: 1px solid #E5E7EB;
+    border-top: 3.5px solid var(--sirva-purple-text);
+    box-shadow: 0 12px 28px rgba(21, 0, 86, 0.16), 0 4px 10px rgba(0, 0, 0, 0.05);
+    padding: 8px 0;
+    min-width: 250px;
+    max-width: 320px;
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+    box-sizing: border-box;
   }
-  .sirva-megamenu-panel::before {
+
+  /* Invisible hover bridge between left rail and Tier 1 */
+  .sirva-cascade-tier1::before {
     content: "";
     position: absolute;
-    top: 0;
-    bottom: 0;
-    left: -20px;
-    width: 22px;
+    top: -12px;
+    bottom: -12px;
+    left: -18px;
+    width: 20px;
+    background: transparent;
   }
-  .sirva-megamenu-panel.is-visible {
+
+  /* Tier 2: Level 3 cascading panel */
+  .sirva-cascade-tier2 {
+    display: none;
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .sirva-cascade-tier2.is-visible {
     display: block;
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(0);
   }
-  .sirva-megamenu-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(170px, 1fr));
-    gap: 36px;
+  /* Invisible hover bridge between Tier 1 and Tier 2 */
+  .sirva-cascade-tier2::before {
+    content: "";
+    position: absolute;
+    top: -12px;
+    bottom: -12px;
+    left: -14px;
+    width: 16px;
+    background: transparent;
   }
-  .sirva-megamenu-col {
-    display: flex;
-    flex-direction: column;
-  }
-  .sirva-megamenu-heading {
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #9631DE;
-    margin: 0 0 18px 0;
-    user-select: none;
-  }
-  .sirva-megamenu-links {
+
+  .sirva-cascade-list {
     list-style: none;
     margin: 0;
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 13px;
   }
-  .sirva-megamenu-link {
+
+  .sirva-cascade-item {
+    margin: 0;
+    padding: 0;
+    position: relative;
+  }
+
+  .sirva-cascade-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
     color: #4D4B49;
-    text-decoration: none;
-    font-size: 14px;
-    line-height: 1.4;
-    transition: color 0.15s ease, transform 0.15s ease;
-    display: inline-block;
+    text-decoration: none !important;
+    font-size: 14.5px;
+    font-weight: 500;
+    line-height: 1.35;
+    cursor: pointer;
+    user-select: none;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    transition: color 0.14s ease, background-color 0.14s ease;
   }
-  .sirva-megamenu-link:hover {
-    color: #7B1FC0;
-    transform: translateX(3px);
+
+  .sirva-cascade-text {
+    color: inherit;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sirva-cascade-arrow {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1;
+    margin-left: 14px;
+    color: #9CA3AF;
+    transition: color 0.14s ease;
+    flex-shrink: 0;
+  }
+
+  /* Hover and active states (matching design screenshot) */
+  .sirva-cascade-link:hover,
+  .sirva-cascade-item.is-active-tier1 > .sirva-cascade-link {
+    color: var(--sirva-purple-text) !important;
+    background-color: #F6EFFD !important;
+  }
+  .sirva-cascade-link:hover .sirva-cascade-arrow,
+  .sirva-cascade-item.is-active-tier1 > .sirva-cascade-link .sirva-cascade-arrow {
+    color: var(--sirva-purple-text) !important;
+  }
+
+  /* Current URL page indicator */
+  .sirva-cascade-link.is-current {
+    color: var(--sirva-purple-text) !important;
+    font-weight: 600;
+    background-color: #F6EFFD;
+  }
+  .sirva-cascade-link.is-current::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 3.5px;
+    border-radius: 0 3px 3px 0;
+    background: var(--sirva-purple-text);
+  }
+
+  .sirva-cascade-link:focus-visible {
+    outline: 2px solid var(--sirva-purple-text);
+    outline-offset: -2px;
+  }
+  #sirvaNavRoot a.sirva-nav-link:focus-visible {
+    outline: 2px solid var(--sirva-cyan);
+    outline-offset: -2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sirva-cascade-container,
+    .sirva-cascade-tier2,
+    .sirva-cascade-link {
+      transition: none !important;
+    }
   }
 
   /* =========================================================
@@ -432,18 +529,25 @@
       transition: none !important;
     }
 
-    /* Mega menu */
-    .sirva-megamenu-panel {
-      min-width: 0;
-      max-width: none;
+    /* Cascading Menu on Mobile / Compact screens */
+    .sirva-cascade-container {
+      position: fixed;
       left: 10px;
       right: 10px;
+      top: 64px;
       width: auto;
-      padding: 20px;
+      max-width: none;
+      flex-direction: column;
+      gap: 8px;
+      max-height: calc(100vh - 80px);
+      overflow-y: auto;
     }
-    .sirva-megamenu-grid {
-      grid-template-columns: 1fr;
-      gap: 20px;
+    .sirva-cascade-panel {
+      min-width: 0;
+      width: 100%;
+      max-width: none;
+      max-height: none;
+      margin-top: 0 !important;
     }
   }
 
@@ -515,6 +619,5 @@
   }
   a[aria-label="Global People Hub home"] {
     display: none !important;
-}
-
+  }
 }
