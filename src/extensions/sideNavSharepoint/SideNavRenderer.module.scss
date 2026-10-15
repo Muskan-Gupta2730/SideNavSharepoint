@@ -344,6 +344,18 @@
     pointer-events: auto;
   }
 
+  .sirva-cascade-container {
+    overflow: visible !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+
+    &::-webkit-scrollbar {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+    }
+  }
+
   .sirva-cascade-panel {
     background: #ffffff;
     border-radius: 8px;
@@ -353,11 +365,18 @@
     padding: 8px 0;
     min-width: 250px;
     max-width: 320px;
-    max-height: calc(100vh - 80px);
-    overflow-y: auto;
-    overflow-x: hidden;
+    max-height: none !important;
+    overflow: visible !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
     position: relative;
     box-sizing: border-box;
+
+    &::-webkit-scrollbar {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+    }
   }
 
   /* Invisible hover bridge between left rail and Tier 1 */
@@ -539,15 +558,15 @@
       max-width: none;
       flex-direction: column;
       gap: 8px;
-      max-height: calc(100vh - 80px);
-      overflow-y: auto;
+      overflow: visible !important;
     }
     .sirva-cascade-panel {
       min-width: 0;
       width: 100%;
       max-width: none;
-      max-height: none;
+      max-height: none !important;
       margin-top: 0 !important;
+      overflow: visible !important;
     }
   }
 

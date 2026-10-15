@@ -352,6 +352,7 @@ export class SideNavRenderer {
       const href = link.getAttribute('href');
 
       if (!href || href === '#') {
+        e.preventDefault();
         return;
       }
 
@@ -468,14 +469,14 @@ export class SideNavRenderer {
   private focusTier1First(): void {
     const first = this._container?.querySelector('#sirvaCascadeList1 .sirva-cascade-link') as HTMLElement | null;
     if (first) {
-      first.focus();
+      first.focus({ preventScroll: true });
     }
   }
 
   private focusTier2First(): void {
     const first = this._container?.querySelector('#sirvaCascadeList2 .sirva-cascade-link') as HTMLElement | null;
     if (first) {
-      first.focus();
+      first.focus({ preventScroll: true });
     }
   }
 
@@ -484,7 +485,7 @@ export class SideNavRenderer {
     this.closeCascadingMenu();
     const link = itemEl?.querySelector('a.sirva-nav-link') as HTMLElement | null;
     if (link) {
-      link.focus();
+      link.focus({ preventScroll: true });
     }
   }
 
@@ -576,11 +577,11 @@ export class SideNavRenderer {
         } else if (e.key === 'ArrowDown') {
           e.preventDefault();
           const next = t1El.nextElementSibling?.querySelector('.sirva-cascade-link') as HTMLElement | null;
-          if (next) { next.focus(); }
+          if (next) { next.focus({ preventScroll: true }); }
         } else if (e.key === 'ArrowUp') {
           e.preventDefault();
           const prev = t1El.previousElementSibling?.querySelector('.sirva-cascade-link') as HTMLElement | null;
-          if (prev) { prev.focus(); }
+          if (prev) { prev.focus({ preventScroll: true }); }
         }
       });
     });
@@ -644,15 +645,15 @@ export class SideNavRenderer {
         if (e.key === 'ArrowLeft') {
           e.preventDefault();
           const t1Link = t1El.querySelector('.sirva-cascade-link') as HTMLElement | null;
-          if (t1Link) { t1Link.focus(); }
+          if (t1Link) { t1Link.focus({ preventScroll: true }); }
         } else if (e.key === 'ArrowDown') {
           e.preventDefault();
           const next = t2El.nextElementSibling?.querySelector('.sirva-cascade-link') as HTMLElement | null;
-          if (next) { next.focus(); }
+          if (next) { next.focus({ preventScroll: true }); }
         } else if (e.key === 'ArrowUp') {
           e.preventDefault();
           const prev = t2El.previousElementSibling?.querySelector('.sirva-cascade-link') as HTMLElement | null;
-          if (prev) { prev.focus(); }
+          if (prev) { prev.focus({ preventScroll: true }); }
         }
       });
     });
